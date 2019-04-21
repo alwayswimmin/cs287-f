@@ -8,20 +8,33 @@ nlp = spacy.load("en_core_web_sm")
 def test(src, gen):
     src = nlp(src)
     gen = nlp(gen)
-    dependencies = []
+    dependencies = dict()
     for token in src:
-        if(token.dep_ == 'nsubj' or token.dep_ == 'dobj'):
-            dependencies.append((token.text, token.head.text, token.dep_))
-    contained = 0.
-    total = 0.
+        word, head, dep = token.text, token.head.text, token.dep_
+        if dep not in dependencies:
+            dependencies[dep] = dict()
+        if word not in dependencies[dep]:
+            dependencies[dep][word] = list()
+        dependencies[dep][word].append(head)
+    contained = 0
+    total = 0
     for token in gen:
-        if(token.dep_ == 'nsubj' or token.dep_ == 'dobj'):
-            total += 1.
-            if((token.text, token.head.text, token.dep_) in dependencies):
-                contained += 1.
+        word, head, dep = token.text, token.head.text, token.dep_
+        if not (token.dep_ == 'nsubj' or token.dep_ == 'dobj'):
+            continue
+        if dep in dependencies:
+            if word in dependencies[dep]:
+                if head in dependencies[dep][word]:
+                    contained += 1
+                else:
+                    print("missing |", word, head, dep, "|", dependencies[dep][word])
+            else:
+                print("missing |", word, head, dep, "| word not in source document")
+        else:
+            print("missing |", word, head, dep, "| dependency not in source document")
     if total == 0:
         return 0.0
-    return 100. * contained / total
+    return 100 * contained / total
 
 def clean_src(s):
     return s
@@ -41,11 +54,13 @@ with open("data/test.txt.src.tagged.shuf.400words") as src:
         for src_line, gen_line in zip(src, gen):
             src_line = clean_src(src_line)
             gen_line = clean_gen(gen_line)
+            print("source:", src_line)
+            print("summary:", gen_line)
             scores.append(test(src_line, gen_line))
             i += 1
-            if i == 100:
+            if i == 10:
                 break
 
-sns.set()
-ax = sns.distplot(scores)
-plt.show()
+# sns.set()
+# ax = sns.distplot(scores)
+# plt.show()
