@@ -43,13 +43,38 @@ def test(src, gen):
     return 100 * contained / total
 
 def clean_src(s):
-    return s
+    s = s.split()
+    # remove everything from "-lrb-" to "-rrb-"
+    s2 = []
+    in_paren = False
+    for ixw, w in enumerate(s):
+        if(w=="-lrb-"):
+            in_paren=True
+        elif(w=='-rrb-'):
+            in_paren=False
+        elif(w=="-lsb-" or w=="-rsb-"):
+            continue
+        elif(len(w) > 1 and w[0] == '\''):
+            s2[-1] = s2[-1]+w
+        elif not in_paren and not (w == '<t>' or w == '</t>'):
+            s2.append(w)
+    return ' '.join(s2)
 
 def clean_gen(s):
     s = s.split()
+    # remove everything from "-lrb-" to "-rrb-"
     s2 = []
+    in_paren = False
     for w in s:
-        if not (w == '<t>' or w == '</t>'):
+        if(w=="-lrb-"):
+            in_paren=True
+        elif(w=='-rrb-'):
+            in_paren=False
+        elif(w=="-lsb-" or w=="-rsb-"):
+            continue
+        elif(len(w) > 1 and w[0] == '\''):
+            s2[-1] = s2[-1]+w
+        elif not in_paren and not(w == '<t>' or w == '</t>'):
             s2.append(w)
     return ' '.join(s2)
 
