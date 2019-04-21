@@ -20,19 +20,43 @@ def test(src, gen):
             if((token.text, token.head.text, token.dep_) in dependencies):
                 contained += 1.
     return (contained, total) #100. * contained / total
-
+    
 def clean_src(s):
-    return s
+    s = s.split()
+    # remove everything from "-lrb-" to "-rrb-"
+    s2 = []
+    in_paren = False
+    for ixw, w in enumerate(s):
+        if(w=="-lrb-"):
+            in_paren=True
+        elif(w=='-rrb-'):
+            in_paren=False
+        elif(w=="-lsb-" or w=="-rsb-"):
+            continue
+        elif(len(w) > 1 and w[0] == '\''):
+            s2[-1] = s2[-1]+w
+        elif not in_paren and not (w == '<t>' or w == '</t>'):
+            s2.append(w)
+    return ' '.join(s2)
 
 def clean_gen(s):
     s = s.split()
-    if(s[0] == "-lrb-"):
-        s = s[3:]
+    # remove everything from "-lrb-" to "-rrb-"
     s2 = []
+    in_paren = False
     for w in s:
-        if not (w == '<t>' or w == '</t>'):
+        if(w=="-lrb-"):
+            in_paren=True
+        elif(w=='-rrb-'):
+            in_paren=False
+        elif(w=="-lsb-" or w=="-rsb-"):
+            continue
+        elif(len(w) > 1 and w[0] == '\''):
+            s2[-1] = s2[-1]+w
+        elif not in_paren and not(w == '<t>' or w == '</t>'):
             s2.append(w)
     return ' '.join(s2)
+
 
 stats = []
 with open("../data/test.txt.src.tagged.shuf.400words") as src:
@@ -45,7 +69,7 @@ with open("../data/test.txt.src.tagged.shuf.400words") as src:
             # print("score:", test(src_line, gen_line))
             stats.append(test(src_line, gen_line))
 
-np.save(stats, "stats")
+np.save("stats", stats)
 
 sns.distplot([contained/total if total > 0. else 0. for (contained,total) in stats])
 plt.show()
