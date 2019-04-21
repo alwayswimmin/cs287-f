@@ -20,8 +20,10 @@ def test(src, gen):
         if dep not in dependencies:
             dependencies[dep] = dict()
         if word not in dependencies[dep]:
-            dependencies[dep][word] = list()
-        dependencies[dep][word].append(head)
+            dependencies[dep][word] = dict()
+        if head not in dependencies[dep][word]:
+            dependencies[dep][word][head] = list()
+        dependencies[dep][word][head].append(token)
     contained = 0
     total = 0
     for token in gen:
