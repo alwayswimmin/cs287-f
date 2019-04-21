@@ -1,8 +1,5 @@
-torch
-torchtext
 matplotlib
 numpy
-opt_einsum
 seaborn
 spacy
 git+https://github.com/harvardnlp/namedtensor
