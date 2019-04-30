@@ -14,61 +14,79 @@ class KnowledgeGraph:
     def __init__(self):
         self.relations = list()
         self.noun_threshold = 0.9
-        self.verb_threshold = 0.8
+        self.verb_threshold = 0.9
         self.entailment = 0
         self.dissimilar_verbs = 1
         self.missing_dependencies = 2
         self.contradiction = 3
 
-    def add_relation(self, verb):
-        self.relations.append(verb)
+    def get_actors(self, verb):
+        actors = []
+        for child in verb.children:
+            if child.dep_ == "nsubj":
+                actors.append(child)
+            elif child.dep_ == "agent":
+                # passive, look for true actor
+                for grandchild in child.children:
+                    if grandchild.dep_ == "pobj":
+                        actors.append(grandchild)
+        return actors
+
+    def get_acteds(self, verb):
+        acteds = []
+        for child in verb.children:
+            if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
+                acteds.append(child)
+        return acteds
+
+    def get_relation(self, verb):
+        actors = self.get_actors(verb)
+        acteds = self.get_acteds(verb)
+        return verb, actors, acteds
+
+    def add_verb(self, verb):
+        self.relations.append(self.get_relation(verb))
+
+    def noun_intersect_setminus(self, s, hypothesized_subset):
+        contained_deps = []
+        missing_deps = []
+        for n in hypothesized_subset:
+            contained = False
+            for n2 in s:
+                noun_similarity = n.similarity(n2)
+                if noun_similarity > self.noun_threshold:
+                    contained = True
+                    contained_deps.append((noun_similarity, n2))
+                    continue
+            if not contained:
+                missing_deps.append(n)
+        return contained_deps, missing_deps
 
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis):
-        if premise.similarity(hypothesis) < self.verb_threshold:
+        verb_similarity = premise[0].similarity(hypothesis[0])
+        if verb_similarity < self.verb_threshold:
             return self.dissimilar_verbs, hypothesis
-        contained_deps = []
-        missing_deps = []
-        contradiction = None
-        for child in hypothesis.children:
-            if child.dep_ == "nsubj":
-                actor = None
-                for child2 in premise.children:
-                    if child.similarity(child2) > self.noun_threshold:
-                        if child2.dep_ == "nsubj":
-                            actor = child2
-                        elif child2.dep_ == "dobj" or child2.dep_ == "nsubjpass":
-                            contradiction = child2
-                if actor is not None:
-                    contained_deps.append(actor)
-                else:
-                    missing_deps.append(child)
-            if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
-                acted = None
-                for child2 in premise.children:
-                    if child.similarity(child2) > self.noun_threshold:
-                        if child2.dep_ == "nsubj":
-                            contradiction = child2
-                        elif child2.dep_ == "dobj" or child2.dep_ == "nsubjpass":
-                            acted = child2
-                if acted is not None:
-                    contained_deps.append(acted)
-                else:
-                    missing_deps.append(child)
+        actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
+        acted_acted = self.noun_intersect_setminus(premise[2], hypothesis[2])
+        actor_acted = self.noun_intersect_setminus(premise[1], hypothesis[2])
+        acted_actor = self.noun_intersect_setminus(premise[2], hypothesis[1])
+        contained_deps = actor_actor[0] + acted_acted[0]
+        missing_deps = actor_actor[1] + acted_acted[1]
+        contradiction_deps = actor_acted[0] + acted_actor[0]
         if len(missing_deps) == 0:
-            return self.entailment, contained_deps
-        if contradiction is not None:
-            return self.contraddiction, contradiction
-        return self.missing_dependencies, missing_deps
+            return self.entailment, (verb_similarity, contained_deps)
+        if len(contradiction_deps) > 0:
+            return self.contradiction, (verb_similarity, contained_deps)
+        return self.missing_dependencies, (verb_similarity, missing_deps)
 
-    # returns (result, proof)
-    def query_relation(self, verb):
+    def query_relation(self, hypothesis):
         missing_dependencies = []
         contradiction = []
         for premise in self.relations:
-            r = self.implied_relation(premise, verb)
+            r = self.implied_relation(premise, hypothesis)
             if r[0] == self.entailment:
-                return r
+                return r[0], (premise, r[1])
             elif r[0] == self.missing_dependencies:
                 missing_dependencies.append((premise, r[1]))
             elif r[0] == self.contradiction:
@@ -77,25 +95,31 @@ class KnowledgeGraph:
             return self.contradiction, contradiction
         return self.missing_dependencies, missing_dependencies
 
+    # returns (result, proof)
+    def query_verb(self, verb):
+        return self.query_relation(self.get_relation(verb))
+
 def test(src, gen):
     src = nlp(src)
     gen = nlp(gen)
     kg = KnowledgeGraph()
     for token in src:
         if token.pos_ == "VERB":
-            kg.add_relation(token)
+            kg.add_verb(token)
     contained = 0
     total = 0
     for token in gen:
         if token.pos_ == "VERB":
             total += 1
-            r = kg.query_relation(token)
+            relation = kg.get_relation(token)
+            r = kg.query_relation(relation)
             if r[0] == kg.entailment:
+                print("contained |", relation, "|", r[1])
                 contained += 1
             elif r[0] == kg.missing_dependencies:
-                print("missing |", token, "|", r[1])
+                print("missing |", relation, "|", r[1])
             elif r[0] == kg.contradiction:
-                print("contradiction |", token, "|", r[1])
+                print("contradiction |", relation, "|", r[1])
     if total == 0:
         return 0.0
     return 100.0 * contained / total
