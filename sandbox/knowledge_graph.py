@@ -1,5 +1,6 @@
 import sys
 import spacy
+import neuralcoref
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 nlp = spacy.load("en_core_web_sm")
+neuralcoref.add_to_pipe(nlp)
 
 class KnowledgeGraph:
 
@@ -47,20 +49,57 @@ class KnowledgeGraph:
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
-    def noun_intersect_setminus(self, s, hypothesized_subset):
-        contained_deps = []
-        missing_deps = []
-        for n in hypothesized_subset:
+    def is_not_generic(self, span):
+        for word in span:
+            if word.pos_ != "PRON":
+                return True
+        return False
+
+    def get_valid_cluster_objects(self, noun):
+        spans = list()
+        # spans.append(noun)
+        for cluster in noun._.coref_clusters:
+            for span in cluster:
+                if self.is_not_generic(span):
+                    spans.append(span)
+        return spans 
+
+    def noun_same(self, n1, n2):
+        # noun_similarity = n1.similarity(n2)
+        # if noun_similarity > self.noun_threshold:
+        #     return True, ("nouns match:", noun_similarity)
+        spans1 = self.get_valid_cluster_objects(n1)
+        spans2 = self.get_valid_cluster_objects(n2)
+        maximum_similarity = 0
+        maximum_pair = None
+        for span1 in spans1:
+            for span2 in spans2:
+                try:
+                    span_similarity = span1.similarity(span2)
+                except:
+                    continue
+                if span_similarity > maximum_similarity:
+                    maximum_similarity = span_similarity
+                    maximum_pair = span1, span2
+        if maximum_similarity > self.noun_threshold:
+            return True, ("best match:", maximum_similarity, maximum_pair)
+        return False, ("best match:", maximum_similarity, maximum_pair)
+
+    def noun_intersect_setminus(self, supset, subset):
+        contained_nouns = []
+        missing_nouns = []
+        for n in subset:
             contained = False
-            for n2 in s:
-                noun_similarity = n.similarity(n2)
-                if noun_similarity > self.noun_threshold:
+            for n2 in supset:
+                r = self.noun_same(n, n2)
+                print(r)
+                if r[0]:
                     contained = True
-                    contained_deps.append((noun_similarity, n2))
+                    contained_nouns.append((n, n2, r[1]))
                     continue
             if not contained:
-                missing_deps.append(n)
-        return contained_deps, missing_deps
+                missing_nouns.append(n)
+        return contained_nouns, missing_nouns
 
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis):
@@ -75,10 +114,13 @@ class KnowledgeGraph:
         missing_deps = actor_actor[1] + acted_acted[1]
         contradiction_deps = actor_acted[0] + acted_actor[0]
         if len(missing_deps) == 0:
-            return self.entailment, (verb_similarity, contained_deps)
+            return self.entailment, ("verb similarity:", verb_similarity,
+                    "contained dependences:", contained_deps)
         if len(contradiction_deps) > 0:
-            return self.contradiction, (verb_similarity, contained_deps)
-        return self.missing_dependencies, (verb_similarity, missing_deps)
+            return self.contradiction, ("verb similarity:", verb_similarity,
+                    "contradictory dependences:", contradiction_deps)
+        return self.missing_dependencies, ("verb similarity:",
+                verb_similarity, "missing dependencies:", missing_deps)
 
     def query_relation(self, hypothesis):
         missing_dependencies = []
@@ -100,8 +142,11 @@ class KnowledgeGraph:
         return self.query_relation(self.get_relation(verb))
 
 def test(src, gen):
+    print("source:", src_line[:50])
+    print("summary:", gen_line[:50])
     src = nlp(src)
     gen = nlp(gen)
+    print("clusters:", src._.coref_clusters)
     kg = KnowledgeGraph()
     for token in src:
         if token.pos_ == "VERB":
@@ -177,8 +222,6 @@ if __name__ == "__main__":
                 src_line = clean_src(src_line)
                 gen_line = clean_gen(gen_line)
                 score = test(src_line, gen_line)
-                print("source:", src_line[:50])
-                print("summary:", gen_line[:50])
                 print("score:", score)
                 scores.append(score)
     
