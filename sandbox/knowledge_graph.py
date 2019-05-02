@@ -57,7 +57,7 @@ class KnowledgeGraph:
 
     def get_valid_cluster_objects(self, noun):
         spans = list()
-        # spans.append(noun)
+        spans.append(noun)
         for cluster in noun._.coref_clusters:
             for span in cluster:
                 if self.is_not_generic(span):
@@ -92,7 +92,6 @@ class KnowledgeGraph:
             contained = False
             for n2 in supset:
                 r = self.noun_same(n, n2)
-                print(r)
                 if r[0]:
                     contained = True
                     contained_nouns.append((n, n2, r[1]))
