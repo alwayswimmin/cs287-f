@@ -80,19 +80,20 @@ def clean_gen(s):
             s2.append(w)
     return ' '.join(s2)
 
-scores = []
-i = 0
-with open("data/test.txt.src.tagged.shuf.400words") as src:
-    with open("data/bottom_up_cnndm_015_threshold.out") as gen:
-        for src_line, gen_line in zip(src, gen):
-            src_line = clean_src(src_line)
-            gen_line = clean_gen(gen_line)
-            print("source:", src_line)
-            print("summary:", gen_line)
-            scores.append(test(src_line, gen_line))
-            i += 1
-            if i == 5:
-                break
+if __name__=='main':
+    scores = []
+    i = 0
+    with open("data/test.txt.src.tagged.shuf.400words") as src:
+        with open("data/bottom_up_cnndm_015_threshold.out") as gen:
+            for src_line, gen_line in zip(src, gen):
+                src_line = clean_src(src_line)
+                gen_line = clean_gen(gen_line)
+                print("source:", src_line)
+                print("summary:", gen_line)
+                scores.append(test(src_line, gen_line))
+                i += 1
+                if i == 5:
+                    break
 
 # sns.set()
 # ax = sns.distplot(scores)
