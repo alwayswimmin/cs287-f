@@ -10,6 +10,9 @@ warnings.filterwarnings("ignore")
 
 nlp = spacy.load("en_core_web_sm")
 neuralcoref.add_to_pipe(nlp)
+
+
+
 class KnowledgeGraph:
     
     def __init__(self):
@@ -39,6 +42,7 @@ class KnowledgeGraph:
         for verb in verb_cluster:
             actors += self.get_actors(verb)
             acteds += self.get_acteds(verb)
+#         print("relation", verb_cluster, actors, acteds)
         return verb_cluster, actors, acteds
     
     # =========================================
@@ -75,7 +79,7 @@ class KnowledgeGraph:
         return acteds
 
     # =========================================
-    # 3) checking hypothesis against 
+    # 3) checking hypothesis relation against 
     # premise's KnowledgeGraph relations
     # =========================================
     def query_relation(self, hypothesis):
@@ -87,7 +91,7 @@ class KnowledgeGraph:
             # once we find that hypothesis is contained,
             # accept this relation as verified
             if r[0] == self.entailment:
-                return r[0], (premise, r[1])
+                return r[0], [(premise, r[1])]
             elif r[0] == self.missing_dependencies:
                 missing_dependencies.append((premise, r[1]))
             elif r[0] == self.contradiction:
@@ -198,41 +202,6 @@ class KnowledgeGraph:
         return False
 
 
-def test(src, gen):
-    print("source:", src_line[:50])
-    print("summary:", gen_line[:50])
-    src = nlp(src)
-    gen = nlp(gen)
-    print("clusters:", src._.coref_clusters)
-    kg = KnowledgeGraph()
-
-    # put all actors/acteds for each verb into knowledge graph
-    for token in src:
-        if token.pos_ == "VERB":
-            kg.add_verb(token)
-    contained = 0
-    missing = 0
-    contradiction = 0
-    total = 0
-    for token in gen:
-        if token.pos_ == "VERB" and not(token.dep_=='xcomp'):
-            total += 1
-
-            relation = kg.get_relation(token)
-            r = kg.query_relation(relation)
-            if r[0] == kg.entailment:
-                # print("contained |", relation, "|", r[1])
-                contained += 1
-            elif r[0] == kg.missing_dependencies:
-                missing += 1
-                print("missing |", relation, "|", r[1])
-            elif r[0] == kg.contradiction:
-                contradiction += 1
-                print("contradiction |", relation, "|", r[1])
-    if total == 0:
-        return 0.0
-    return 100.0 * contained / total, 100.0 * missing / total, 100.0 * contradiction / total
-
 
 def clean_src(s):
     s = s.split()
@@ -270,26 +239,116 @@ def clean_gen(s):
             s2.append(w)
     return ' '.join(s2)
 
+
+
+def visualize(src0, gen0, important_relations):
+    colors = {'contained':lambda text: '\033[0;32m' + text + '\033[0m', 
+              'missing':lambda text: '\033[0;33m' + text + '\033[0m', 
+              'contradiction':lambda text: '\033[0;31m' + text + '\033[0m'}
+
+    colored_src = src0
+    colored_gen = gen0
+    for relation_tuple in important_relations:
+        result = relation_tuple[0]
+        relation = relation_tuple[1]
+        proof = relation_tuple[2]
+        
+        # color output doc
+        verbs = relation[0]
+        actors = relation[1]
+        acteds = relation[2]
+        for verb in verbs:
+            colored_gen[verb.i] = colors[result](verb.text)
+        for a in actors:
+            colored_gen[a.i] = colors[result](a.text)
+        for a in acteds:
+            colored_gen[a.i] = colors[result](a.text)
+            
+        # color source doc
+        for p in proof:
+            for verb in p[0][0]:
+                colored_src[verb.i] = colors[result](verb.text)
+            for a in p[0][1]:
+                colored_src[a.i] = colors[result](a.text)
+            for a in p[0][2]:
+                colored_src[a.i] = colors[result](a.text)
+
+    colored_src = ' '.join(colored_src)
+    colored_gen = ' '.join(colored_gen)
+
+    return colored_src, colored_gen
+
+def test(src, gen):
+#     print("source:", src_line[:100])
+#     print("summary:", gen_line[:100])
+    src = nlp(src)
+    gen = nlp(gen)
+#     print("clusters:", src._.coref_clusters)
+    kg = KnowledgeGraph()
+
+    # put all actors/acteds for each verb into knowledge graph
+    for ixt, token in enumerate(src):
+        if token.pos_ == "VERB":
+            kg.add_verb(token)
+    important_relations = []
+    contained = 0
+    missing = 0
+    contradiction = 0
+    total = 0
+    
+    for token in gen:
+        if token.pos_ == "VERB" and not(token.dep_=='xcomp' or token.dep_=='aux'):
+            total += 1
+
+            relation = kg.get_relation(token)
+            r = kg.query_relation(relation)
+            if r[0] == kg.entailment:
+                contained += 1
+                important_relations.append(('contained', relation, r[1]))
+#                 print("contained |", relation, "|", r[1])
+            elif r[0] == kg.missing_dependencies:
+                missing += 1
+                important_relations.append(('missing', relation, r[1]))
+#                 print("missing |", relation, "|", r[1])
+            elif r[0] == kg.contradiction:
+                contradiction += 1
+                important_relations.append(('contradiction', relation, r[1]))
+#                 print("contradiction |", relation, "|", r[1])
+    
+    important_relations = sorted(important_relations)
+    colored_src, colored_gen = visualize([word.text for word in src], [word.text for word in gen], important_relations)
+    
+    if total == 0:
+        return important_relations, (0.0, 0.0, 0.0), (colored_src, colored_gen)
+    return important_relations, (100.0 * contained / total, 
+                                 100.0 * missing / total, 
+                                 100.0 * contradiction / total), (colored_src, colored_gen)
+
+
 if __name__ == "__main__":
     line_num = 0
-    if len(sys.argv) > 1:
-        line_num = int(sys.argv[1])
     scores = []
-    i = 0
+    src_lines = []
+    gen_lines = []
     with open("data/test.txt.src.tagged.shuf.400words") as src:
         with open("data/bottom_up_cnndm_015_threshold.out") as gen:
-            for src_line, gen_line in zip(src, gen):
-                print(i)
-                i += 1
+            for i, (src_line, gen_line) in enumerate(zip(src, gen)):
                 if line_num > 0 and not i == line_num:
                     continue
                 if line_num == 0 and i >= 10:
                     break
                 src_line = clean_src(src_line)
+                src_lines.append(src_line)
                 gen_line = clean_gen(gen_line)
-                score = test(src_line, gen_line)
-                # print("score:", score)
+                gen_lines.append(gen_line)
+                important_relations, score, (colored_src, colored_gen) = test(src_line, gen_line)
+                print(f"src {i}:"%{i:i}, colored_src)
+                print(f"summary {i}:"%{i:i}, colored_gen)
+                print("score:", score)
+                print("===========================================================================================")
                 scores.append(score)
+                
+            
 
     np.save("sandbox/scores", scores)
     
