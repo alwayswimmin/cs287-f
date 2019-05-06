@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 
-nlp = spacy.load("en_core_web_sm")
-neuralcoref.add_to_pipe(nlp)
+nlp = spacy.load("en_core_web_lg")
+neuralcoref.add_to_pipe(nlp, greedyness=0.50, max_dist=500)
 
 class KnowledgeGraph:
 
     def __init__(self):
         self.relations = list()
-        self.noun_threshold = 0.9
+        self.noun_threshold = 0.8
         self.verb_threshold = 0.9
         self.entailment = 0
         self.dissimilar_verbs = 1
@@ -57,17 +57,21 @@ class KnowledgeGraph:
 
     def get_valid_cluster_objects(self, noun):
         spans = list()
-        spans.append(noun)
-        for cluster in noun._.coref_clusters:
-            for span in cluster:
-                if self.is_not_generic(span):
-                    spans.append(span)
+        if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
+            # the head is the verb of the relative clause
+            # the head of the verb should be the noun this thing refers to
+            print("found relative clause, replacing", noun, "with", noun.head.head)
+            noun = noun.head.head
+        if not noun._.in_coref:
+            spans.append(noun)
+        else:
+            for cluster in noun._.coref_clusters:
+                for span in cluster:
+                    if self.is_not_generic(span):
+                        spans.append(span)
         return spans 
 
     def noun_same(self, n1, n2):
-        # noun_similarity = n1.similarity(n2)
-        # if noun_similarity > self.noun_threshold:
-        #     return True, ("nouns match:", noun_similarity)
         spans1 = self.get_valid_cluster_objects(n1)
         spans2 = self.get_valid_cluster_objects(n2)
         maximum_similarity = 0
@@ -92,6 +96,7 @@ class KnowledgeGraph:
             contained = False
             for n2 in supset:
                 r = self.noun_same(n, n2)
+                print(n, n2, r)
                 if r[0]:
                     contained = True
                     contained_nouns.append((n, n2, r[1]))
