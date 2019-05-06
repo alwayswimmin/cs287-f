@@ -5,6 +5,7 @@ import neuralcoref
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from termcolor import colored
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -54,43 +55,43 @@ class KnowledgeGraph:
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
-    def is_not_generic(self, span):
-        for word in span:
-            if word.pos_ != "PRON":
-                return True
-        return False
+    def is_generic(self, token):
+        return token.pos_ == "PRON" or token.pos_ == "DET"
 
-    def get_valid_cluster_objects(self, noun):
-        spans = list()
+    def get_valid_cluster_tokens(self, noun):
+        tokens = list()
         if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
             if verbose:
                 print("found relative clause, replacing", noun, "with", noun.head.head)
             noun = noun.head.head
-        if not noun._.in_coref:
-            spans.append(noun)
-        else:
-            for cluster in noun._.coref_clusters:
-                for span in cluster:
-                    if self.is_not_generic(span):
-                        spans.append(span)
-        return spans 
+        for cluster in noun._.coref_clusters:
+            for span in cluster:
+                for token in span:
+                    if not self.is_generic(token):
+                        tokens.append(token)
+        if len(tokens) == 0:
+            if self.is_generic(noun):
+                if verbose:
+                    print(colored("warning:", "yellow"), "using generic token", noun)
+            tokens.append(noun)
+        return tokens 
 
     def noun_same(self, n1, n2):
-        spans1 = self.get_valid_cluster_objects(n1)
-        spans2 = self.get_valid_cluster_objects(n2)
+        tokens1 = self.get_valid_cluster_tokens(n1)
+        tokens2 = self.get_valid_cluster_tokens(n2)
         maximum_similarity = 0
         maximum_pair = None
-        for span1 in spans1:
-            for span2 in spans2:
+        for token1 in tokens1:
+            for token2 in tokens2:
                 try:
-                    span_similarity = span1.similarity(span2)
+                    span_similarity = token1.similarity(token2)
                 except:
                     continue
                 if span_similarity > maximum_similarity:
                     maximum_similarity = span_similarity
-                    maximum_pair = span1, span2
+                    maximum_pair = token1, token2
         if maximum_similarity > self.noun_threshold:
             return True, ("best match:", maximum_similarity, maximum_pair)
         return False, ("best match:", maximum_similarity, maximum_pair)
@@ -177,10 +178,10 @@ def test(src, gen):
                 contained += 1
             elif r[0] == kg.missing_dependencies:
                 if verbose:
-                    print("missing |", relation, "|", r[1])
+                    print(colored("missing", "red"), "|", relation, "|", r[1])
             elif r[0] == kg.contradiction:
                 if verbose:
-                    print("contradiction |", relation, "|", r[1])
+                    print(colored("contradiction", "red"), "|", relation, "|", r[1])
     if total == 0:
         return 0.0
     return 100.0 * contained / total

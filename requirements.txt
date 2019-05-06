@@ -3,4 +3,5 @@ neuralcoref
 numpy
 seaborn
 spacy
+termcolor
 git+https://github.com/harvardnlp/namedtensor
