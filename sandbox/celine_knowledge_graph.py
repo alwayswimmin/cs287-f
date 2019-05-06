@@ -341,7 +341,7 @@ def avg_copy_length(src,gen):
         src_ix = -1
         for ixsw, src_word in enumerate(src):
             j = 0
-            while(ixgw+j < len(gen) and ixsw+j < len(src) and src[ixsw:ixsw+j] == gen[ixgw:ixgw+j]):
+            while(ixgw+j <= len(gen) and ixsw+j <= len(src) and src[ixsw:ixsw+j] == gen[ixgw:ixgw+j]):
                 j += 1
             if(j > max_j):
                 max_j = j
@@ -355,6 +355,7 @@ def avg_copy_length(src,gen):
         if not (ixgw > 0 and src_ix-1 == substrings[ixgw-1][1]):
             if(len(substrings[ixgw][0])>0):
                 num_copied += 1
+                print(substrings[ixgw])
                 avg_length += len(substr)
     avg_length /= num_copied
     
