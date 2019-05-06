@@ -324,6 +324,42 @@ def test(src, gen):
                                  100.0 * missing / total, 
                                  100.0 * contradiction / total), (colored_src, colored_gen)
 
+# returns average number of tokens copied = max copy length / unique phrases copied
+def avg_copy_length(src,gen):
+    src = src.split()
+    gen = gen.split()
+    substrings = {}
+    for ixgw,word in enumerate(gen):
+        substrings[ixgw] = []
+    
+    avg_length = 0
+    num_copied = 0
+    ixgw = 0
+    while(ixgw < len(gen)):
+        gen_word = gen[ixgw]
+        max_j = 0
+        src_ix = -1
+        for ixsw, src_word in enumerate(src):
+            j = 0
+            while(ixgw+j < len(gen) and ixsw+j < len(src) and src[ixsw:ixsw+j] == gen[ixgw:ixgw+j]):
+                j += 1
+            if(j > max_j):
+                max_j = j
+                src_ix = ixsw
+        substrings[ixgw] = (gen[ixgw:ixgw+max_j-1], src_ix)
+        ixgw += 1
+        
+    for ixgw,gen_word in enumerate(gen):
+        substr = substrings[ixgw][0]
+        src_ix = substrings[ixgw][1]
+        if not (ixgw > 0 and src_ix-1 == substrings[ixgw-1][1]):
+            if(len(substrings[ixgw][0])>0):
+                num_copied += 1
+                avg_length += len(substr)
+    avg_length /= num_copied
+    
+    return avg_length 
+    
 
 if __name__ == "__main__":
     line_num = 0
