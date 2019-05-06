@@ -1,3 +1,4 @@
+import argparse
 import sys
 import spacy
 import neuralcoref
@@ -10,6 +11,10 @@ warnings.filterwarnings("ignore")
 
 nlp = spacy.load("en_core_web_lg")
 neuralcoref.add_to_pipe(nlp, greedyness=0.50, max_dist=500)
+
+print_scores = False
+verbose = False
+draw = False
 
 class KnowledgeGraph:
 
@@ -60,7 +65,8 @@ class KnowledgeGraph:
         if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
-            print("found relative clause, replacing", noun, "with", noun.head.head)
+            if verbose:
+                print("found relative clause, replacing", noun, "with", noun.head.head)
             noun = noun.head.head
         if not noun._.in_coref:
             spans.append(noun)
@@ -96,7 +102,8 @@ class KnowledgeGraph:
             contained = False
             for n2 in supset:
                 r = self.noun_same(n, n2)
-                print(n, n2, r)
+                if verbose:
+                    print(n, n2, r)
                 if r[0]:
                     contained = True
                     contained_nouns.append((n, n2, r[1]))
@@ -146,11 +153,13 @@ class KnowledgeGraph:
         return self.query_relation(self.get_relation(verb))
 
 def test(src, gen):
-    print("source:", src_line[:50])
-    print("summary:", gen_line[:50])
+    if verbose:
+        print("source:", src_line[:50])
+        print("summary:", gen_line[:50])
     src = nlp(src)
     gen = nlp(gen)
-    print("clusters:", src._.coref_clusters)
+    if verbose:
+        print("clusters:", src._.coref_clusters)
     kg = KnowledgeGraph()
     for token in src:
         if token.pos_ == "VERB":
@@ -163,12 +172,15 @@ def test(src, gen):
             relation = kg.get_relation(token)
             r = kg.query_relation(relation)
             if r[0] == kg.entailment:
-                print("contained |", relation, "|", r[1])
+                if verbose:
+                    print("contained |", relation, "|", r[1])
                 contained += 1
             elif r[0] == kg.missing_dependencies:
-                print("missing |", relation, "|", r[1])
+                if verbose:
+                    print("missing |", relation, "|", r[1])
             elif r[0] == kg.contradiction:
-                print("contradiction |", relation, "|", r[1])
+                if verbose:
+                    print("contradiction |", relation, "|", r[1])
     if total == 0:
         return 0.0
     return 100.0 * contained / total
@@ -210,25 +222,38 @@ def clean_gen(s):
     return ' '.join(s2)
 
 if __name__ == "__main__":
-    line_num = 0
-    if len(sys.argv) > 1:
-        line_num = int(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Analyze Bottom-Up Abstraction Outputs.')
+    parser.add_argument('indices', metavar='i', type=int, nargs='+', default=-1,
+                        help='indices to test')
+    parser.add_argument('--print_scores', dest='print_scores',
+                        action='store_const', const=True, default=False,
+                        help='score prints (default: False)')
+    parser.add_argument('--draw', dest='draw', action='store_const',
+                        const=True, default=False,
+                        help='draw histogram (default: False)')
+    parser.add_argument('--verbose', dest='verbose', action='store_const',
+                        const=True, default=False,
+                        help='verbose prints (default: False)')
+    args = parser.parse_args()
+    indices = args.indices
+    print_scores = args.print_scores
+    verbose = args.verbose
+    draw = args.draw
+
     scores = []
-    i = 0
     with open("data/test.txt.src.tagged.shuf.400words") as src:
         with open("data/bottom_up_cnndm_015_threshold.out") as gen:
-            for src_line, gen_line in zip(src, gen):
-                i += 1
-                if line_num > 0 and not i == line_num:
+            for i, (src_line, gen_line) in enumerate(zip(src, gen)):
+                if -1 not in indices and i not in indices:
                     continue
-                if line_num == 0 and i >= 10:
-                    break
                 src_line = clean_src(src_line)
                 gen_line = clean_gen(gen_line)
                 score = test(src_line, gen_line)
-                print("score:", score)
+                if print_scores:
+                    print(i, "score:", score)
                 scores.append(score)
     
-    # sns.set()
-    # ax = sns.distplot(scores)
-    # plt.show()
+    if draw:
+        sns.set()
+        ax = sns.distplot(scores)
+        plt.show()
