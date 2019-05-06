@@ -188,11 +188,18 @@ class KnowledgeGraph:
 
     def get_valid_cluster_objects(self, noun):
         spans = list()
-        spans.append(noun)
-        for cluster in noun._.coref_clusters:
-            for span in cluster:
-                if self.is_not_generic(span):
-                    spans.append(span)
+        if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
+            # the head is the verb of the relative clause
+            # the head of the verb should be the noun this thing refers to
+            print("found relative clause, replacing", noun, "with", noun.head.head)
+            noun = noun.head.head
+        if not noun._.in_coref:
+            spans.append(noun)
+        else:
+            for cluster in noun._.coref_clusters:
+                for span in cluster:
+                    if self.is_not_generic(span):
+                        spans.append(span)
         return spans 
 
     def is_not_generic(self, span):
@@ -337,30 +344,40 @@ def avg_copy_length(src,gen):
     ixgw = 0
     while(ixgw < len(gen)):
         gen_word = gen[ixgw]
-        max_j = 0
-        src_ix = -1
+        max_js = []
+        src_ixs = []
         for ixsw, src_word in enumerate(src):
             j = 0
             while(ixgw+j <= len(gen) and ixsw+j <= len(src) and src[ixsw:ixsw+j] == gen[ixgw:ixgw+j]):
                 j += 1
-            if(j > max_j):
-                max_j = j
-                src_ix = ixsw
-        substrings[ixgw] = (gen[ixgw:ixgw+max_j-1], src_ix)
+            if(len(max_js) == 0 or j > max_js[0]):
+                max_js = [j]
+                src_ixs = [ixsw]
+            elif(j == max_js[0]):
+                max_js.append(j)
+                src_ixs.append(ixsw)
+        substrings[ixgw] = ([gen[ixgw:ixgw+max_j-1] for max_j in max_js], src_ixs)
         ixgw += 1
         
     for ixgw,gen_word in enumerate(gen):
-        substr = substrings[ixgw][0]
-        src_ix = substrings[ixgw][1]
-        if not (ixgw > 0 and src_ix-1 == substrings[ixgw-1][1]):
+#         substr = substrings[ixgw][0]
+#         src_ix = substrings[ixgw][1]
+        contained = False
+        for src_ix in substrings[ixgw][1]:
+            if ixgw > 0 and src_ix-1 in substrings[ixgw-1][1]:
+                contained=True
+                break
+        
+        if not contained:
             if(len(substrings[ixgw][0])>0):
                 num_copied += 1
-                print(substrings[ixgw])
-                avg_length += len(substr)
+#                 print(substrings[ixgw])
+#                 print(len(substrings[ixgw][0][0]))
+                avg_length += len(substrings[ixgw][0][0])
     avg_length /= num_copied
     
     return avg_length 
-    
+
 
 if __name__ == "__main__":
     line_num = 0
