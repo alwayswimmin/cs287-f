@@ -72,9 +72,8 @@ class KnowledgeGraph:
                     if not self.is_generic(token):
                         tokens.append(token)
         if len(tokens) == 0:
-            if self.is_generic(noun):
-                if verbose:
-                    print(colored("warning:", "yellow"), "using generic token", noun)
+            if self.is_generic(noun) and verbose:
+                print(colored("warning:", "yellow"), "using generic token", noun)
             tokens.append(noun)
         return tokens 
 
@@ -85,12 +84,9 @@ class KnowledgeGraph:
         maximum_pair = None
         for token1 in tokens1:
             for token2 in tokens2:
-                try:
-                    span_similarity = token1.similarity(token2)
-                except:
-                    continue
-                if span_similarity > maximum_similarity:
-                    maximum_similarity = span_similarity
+                token_similarity = token1.similarity(token2)
+                if token_similarity > maximum_similarity:
+                    maximum_similarity = token_similarity
                     maximum_pair = token1, token2
         if maximum_similarity > self.noun_threshold:
             return True, ("best match:", maximum_similarity, maximum_pair)
