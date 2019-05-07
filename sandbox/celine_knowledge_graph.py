@@ -1,16 +1,21 @@
+import argparse
 import sys
 import spacy
 import neuralcoref
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from termcolor import colored
 
 import warnings
 warnings.filterwarnings("ignore")
 
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_lg")
 neuralcoref.add_to_pipe(nlp)
 
+print_scores = False
+verbose = False
+draw = False
 
 
 class KnowledgeGraph:
@@ -19,7 +24,9 @@ class KnowledgeGraph:
         self.relations = list()
         self.noun_threshold = 0.9
         self.verb_threshold = 0.9
+        self.weak_threshold = 0.5
         self.entailment = 0
+        self.entailment_dissimilar_verbs = 0.5
         self.dissimilar_verbs = 1
         self.missing_dependencies = 2
         self.contradiction = 3
@@ -29,7 +36,6 @@ class KnowledgeGraph:
     # ==========================================
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
-
         
     ##### extracting relations from sentence #####
     def get_relation(self, verb):
@@ -42,7 +48,6 @@ class KnowledgeGraph:
         for verb in verb_cluster:
             actors += self.get_actors(verb)
             acteds += self.get_acteds(verb)
-#         print("relation", verb_cluster, actors, acteds)
         return verb_cluster, actors, acteds
     
     # =========================================
@@ -52,7 +57,7 @@ class KnowledgeGraph:
     def get_verb_cluster(self, verb):
         verb_cluster = [verb]
         for child in verb.children:
-            if child.dep_ == "xcomp":
+            if child.dep_ == "xcomp":# or child.dep_ == "ccomp":
                 verb_cluster.append(child)
         return verb_cluster
         
@@ -87,11 +92,11 @@ class KnowledgeGraph:
         contradiction = []
         for premise in self.relations:
             r = self.implied_relation(premise, hypothesis)
-            
-            # once we find that hypothesis is contained,
-            # accept this relation as verified
+
+            # once we find that hypothesis is contained, accept this relation as verified
+            # if the verb similarity is too low, we make note of this but still mark it as entailed
             if r[0] == self.entailment:
-                return r[0], [(premise, r[1])]
+                return r[0], [(premise,r[1])]
             elif r[0] == self.missing_dependencies:
                 missing_dependencies.append((premise, r[1]))
             elif r[0] == self.contradiction:
@@ -107,15 +112,17 @@ class KnowledgeGraph:
         verb_similarity, best_pair = self.verb_same(premise[0], hypothesis[0])
         if verb_similarity < self.verb_threshold:
             return self.dissimilar_verbs, hypothesis
-
+        
         # check setminus of premise \ hypothesis
         actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
         acted_acted = self.noun_intersect_setminus(premise[2], hypothesis[2])
         actor_acted = self.noun_intersect_setminus(premise[1], hypothesis[2])
         acted_actor = self.noun_intersect_setminus(premise[2], hypothesis[1])
+
         contained_deps = actor_actor[0] + acted_acted[0]
         missing_deps = actor_actor[1] + acted_acted[1]
         contradiction_deps = actor_acted[0] + acted_actor[0]
+        
         if len(missing_deps) == 0:
             return self.entailment, ("verb similarity:", verb_similarity,
                     "contained dependences:", contained_deps)
@@ -141,11 +148,6 @@ class KnowledgeGraph:
                     maximum_pair = v1, v2
         return maximum_similarity, maximum_pair
     
-    
-#     # returns (result, proof)
-#     def query_verb(self, verb):
-#         return self.query_relation(self.get_relation(verb))
-
 
     # ========================
     # noun helper functions
@@ -157,6 +159,8 @@ class KnowledgeGraph:
             contained = False
             for n2 in supset:
                 r = self.noun_same(n, n2)
+                if verbose:
+                    print(n, n2, r)
                 if r[0]:
                     contained = True
                     contained_nouns.append((n, n2, r[1]))
@@ -166,48 +170,47 @@ class KnowledgeGraph:
         return contained_nouns, missing_nouns
 
     def noun_same(self, n1, n2):
-        # noun_similarity = n1.similarity(n2)
-        # if noun_similarity > self.noun_threshold:
-        #     return True, ("nouns match:", noun_similarity)
-        spans1 = self.get_valid_cluster_objects(n1)
-        spans2 = self.get_valid_cluster_objects(n2)
+        tokens1 = self.get_valid_cluster_tokens(n1)
+        tokens2 = self.get_valid_cluster_tokens(n2)
+        if len(tokens1) == 0 or len(tokens2) == 0:
+            tokens1 = self.get_valid_cluster_tokens(n1, True)
+            tokens2 = self.get_valid_cluster_tokens(n2, True)
         maximum_similarity = 0
         maximum_pair = None
-        for span1 in spans1:
-            for span2 in spans2:
-                try:
-                    span_similarity = span1.similarity(span2)
-                except:
-                    continue
-                if span_similarity > maximum_similarity:
-                    maximum_similarity = span_similarity
-                    maximum_pair = span1, span2
+        for token1 in tokens1:
+            for token2 in tokens2:
+                token_similarity = token1.similarity(token2)
+                if token_similarity > maximum_similarity:
+                    maximum_similarity = token_similarity
+                    maximum_pair = token1, token2
         if maximum_similarity > self.noun_threshold:
             return True, ("best match:", maximum_similarity, maximum_pair)
         return False, ("best match:", maximum_similarity, maximum_pair)
-
-    def get_valid_cluster_objects(self, noun):
-        spans = list()
+    
+    def get_valid_cluster_tokens(self, noun, use_generic=False):
+        tokens = list()
         if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
-            print("found relative clause, replacing", noun, "with", noun.head.head)
+            if verbose:
+                print("found relative clause, replacing", noun, "with", noun.head.head)
             noun = noun.head.head
-        if not noun._.in_coref:
-            spans.append(noun)
-        else:
-            for cluster in noun._.coref_clusters:
-                for span in cluster:
-                    if self.is_not_generic(span):
-                        spans.append(span)
-        return spans 
+        for cluster in noun._.coref_clusters:
+            for span in cluster:
+                for token in span:
+                    if use_generic or not self.is_generic(token):
+                        if verbose and self.is_generic(token):
+                            print(colored("warning:", "yellow"), "using generic token", noun)
+                        tokens.append(token)
+        if len(tokens) == 0:
+            if use_generic or not self.is_generic(noun):
+                if verbose and self.is_generic(noun):
+                    print(colored("warning:", "yellow"), "using generic token", noun)
+                tokens.append(noun)
+        return tokens 
 
-    def is_not_generic(self, span):
-        for word in span:
-            if word.pos_ != "PRON":
-                return True
-        return False
-
+    def is_generic(self, token):
+        return token.pos_ == "PRON" or token.pos_ == "DET"
 
 
 def clean_src(s):
@@ -255,30 +258,32 @@ def visualize(src0, gen0, important_relations):
 
     colored_src = src0
     colored_gen = gen0
-    for relation_tuple in important_relations:
-        result = relation_tuple[0]
-        relation = relation_tuple[1]
-        proof = relation_tuple[2]
-        
-        # color output doc
-        verbs = relation[0]
-        actors = relation[1]
-        acteds = relation[2]
-        for verb in verbs:
-            colored_gen[verb.i] = colors[result](verb.text)
-        for a in actors:
-            colored_gen[a.i] = colors[result](a.text)
-        for a in acteds:
-            colored_gen[a.i] = colors[result](a.text)
-            
-        # color source doc
-        for p in proof:
-            for verb in p[0][0]:
-                colored_src[verb.i] = colors[result](verb.text)
-            for a in p[0][1]:
-                colored_src[a.i] = colors[result](a.text)
-            for a in p[0][2]:
-                colored_src[a.i] = colors[result](a.text)
+    for order in ['missing', 'contained', 'contradiction']:
+        for relation_tuple in important_relations:
+            result = relation_tuple[0]
+            relation = relation_tuple[1]
+            proof = relation_tuple[2]
+            if not(result == order):
+                continue
+            # color output doc
+            verbs = relation[0]
+            actors = relation[1]
+            acteds = relation[2]
+            for verb in verbs:
+                colored_gen[verb.i] = colors[result](verb.text)
+            for a in actors:
+                colored_gen[a.i] = colors[result](a.text)
+            for a in acteds:
+                colored_gen[a.i] = colors[result](a.text)
+
+            # color source doc
+            for p in proof:
+                for verb in p[0][0]:
+                    colored_src[verb.i] = colors[result](verb.text)
+                for a in p[0][1]:
+                    colored_src[a.i] = colors[result](a.text)
+                for a in p[0][2]:
+                    colored_src[a.i] = colors[result](a.text)
 
     colored_src = ' '.join(colored_src)
     colored_gen = ' '.join(colored_gen)
@@ -304,23 +309,36 @@ def test(src, gen):
     total = 0
     
     for token in gen:
-        if token.pos_ == "VERB" and not(token.dep_=='xcomp' or token.dep_=='aux'):
-            total += 1
-
+        # ignore xcomp verbs "tried TO EAT" since will later be added to verb cluster
+        # still adds was/has/is/aux verbs though
+        if token.pos_ == "VERB" and not(token.dep_=='xcomp'):# or token.dep_=='ccomp'):
             relation = kg.get_relation(token)
+            # skip those relations with no actors/acteds
+            if (len(relation[1]) + len(relation[2]) == 0):
+                continue
+            
+            total += 1
             r = kg.query_relation(relation)
             if r[0] == kg.entailment:
                 contained += 1
                 important_relations.append(('contained', relation, r[1]))
-#                 print("contained |", relation, "|", r[1])
+                if(verbose):
+                    print("contained |", relation, "|", r[1])
+#             elif r[0] == kg.entailment_dissimilar_verbs:
+#                 missing += 1
+#                 important_relations.append(('contained-noverb', relation, r[1]))
+#                 if(verbose):
+#                     print("contained-noverb |", relation, "|", r[1])
             elif r[0] == kg.missing_dependencies:
                 missing += 1
                 important_relations.append(('missing', relation, r[1]))
-#                 print("missing |", relation, "|", r[1])
+                if(verbose):
+                    print(colored("missing", "yellow"), "|", relation, "|", r[1])
             elif r[0] == kg.contradiction:
                 contradiction += 1
                 important_relations.append(('contradiction', relation, r[1]))
-#                 print("contradiction |", relation, "|", r[1])
+                if(verbose):
+                    print(colored("contradiction", "red"), "|", relation, "|", r[1])
     
     important_relations = sorted(important_relations)
     colored_src, colored_gen = visualize([word.text for word in src], [word.text for word in gen], important_relations)
@@ -380,32 +398,55 @@ def avg_copy_length(src,gen):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Analyze Bottom-Up Abstraction Outputs.')
+    parser.add_argument('indices', metavar='i', type=int, nargs='+', default=-1,
+                        help='indices to test')
+    parser.add_argument('--print_scores', dest='print_scores',
+                        action='store_const', const=True, default=False,
+                        help='score prints (default: False)')
+    parser.add_argument('--draw', dest='draw', action='store_const',
+                        const=True, default=False,
+                        help='draw histogram (default: False)')
+    parser.add_argument('--verbose', dest='verbose', action='store_const',
+                        const=True, default=False,
+                        help='verbose prints (default: False)')
+    args = parser.parse_args()
+    indices = args.indices
+    print_scores = args.print_scores
+    verbose = args.verbose
+    draw = args.draw
+
     line_num = 0
     scores = []
-    src_lines = []
-    gen_lines = []
-    with open("data/test.txt.src.tagged.shuf.400words") as src:
-        with open("data/bottom_up_cnndm_015_threshold.out") as gen:
+    avg_lengths = []
+    with open("data/bottom-up/test.txt.src.tagged.shuf.400words") as src:
+        with open("data/bottom-up/bottom_up_cnndm_015_threshold.out") as gen:
             for i, (src_line, gen_line) in enumerate(zip(src, gen)):
-                if line_num > 0 and not i == line_num:
+                print(i)
+                if -1 not in indices and i not in indices:
                     continue
-                if line_num == 0 and i >= 10:
-                    break
                 src_line = clean_src(src_line)
-                src_lines.append(src_line)
                 gen_line = clean_gen(gen_line)
-                gen_lines.append(gen_line)
                 important_relations, score, (colored_src, colored_gen) = test(src_line, gen_line)
-                print(f"src {i}:"%{i:i}, colored_src)
-                print(f"summary {i}:"%{i:i}, colored_gen)
-                print("score:", score)
-                print("===========================================================================================")
+                avg_length = avg_copy_length(src_line, gen_line)
+                if(print_scores):
+                    print("===========================================================================================")
+                    print(f"Src {i}:"%{i:i}, colored_src)
+                    print("===========================================================================================")
+                    print(f"Summary {i}:"%{i:i}, colored_gen)
+                    print("Score:", score)
+                    print("Avg copy length:", avg_length)
+                    print("===========================================================================================")
+                    print("===========================================================================================")
                 scores.append(score)
+                avg_lengths.append(avg_length)
                 
             
 
-    np.save("sandbox/scores", scores)
+    np.save("experiments/bottom-up/scores", scores)
+    np.save("experiments/bottom-up/avg_lengths", avg_lengths)
     
-    # sns.set()
-    # ax = sns.distplot(scores)
-    # plt.show()
+    if draw:
+        sns.set()
+        ax = sns.distplot(scores)
+        plt.show()
