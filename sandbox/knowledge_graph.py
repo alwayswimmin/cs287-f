@@ -58,7 +58,7 @@ class KnowledgeGraph:
     def is_generic(self, token):
         return token.pos_ == "PRON" or token.pos_ == "DET"
 
-    def get_valid_cluster_tokens(self, noun):
+    def get_valid_cluster_tokens(self, noun, use_generic=False):
         tokens = list()
         if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
@@ -69,9 +69,9 @@ class KnowledgeGraph:
         for cluster in noun._.coref_clusters:
             for span in cluster:
                 for token in span:
-                    if not self.is_generic(token):
+                    if use_generic or not self.is_generic(token):
                         tokens.append(token)
-        if len(tokens) == 0:
+        if len(tokens) == 0 and use_generic:
             if self.is_generic(noun) and verbose:
                 print(colored("warning:", "yellow"), "using generic token", noun)
             tokens.append(noun)
@@ -80,6 +80,9 @@ class KnowledgeGraph:
     def noun_same(self, n1, n2):
         tokens1 = self.get_valid_cluster_tokens(n1)
         tokens2 = self.get_valid_cluster_tokens(n2)
+        if len(tokens1) == 0 or len(tokens2) == 0:
+            tokens1 = self.get_valid_cluster_tokens(n1, True)
+            tokens2 = self.get_valid_cluster_tokens(n2, True)
         maximum_similarity = 0
         maximum_pair = None
         for token1 in tokens1:
