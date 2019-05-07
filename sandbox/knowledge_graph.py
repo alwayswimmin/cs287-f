@@ -70,11 +70,14 @@ class KnowledgeGraph:
             for span in cluster:
                 for token in span:
                     if use_generic or not self.is_generic(token):
+                        if verbose and self.is_generic(token):
+                            print(colored("warning:", "yellow"), "using generic token", noun)
                         tokens.append(token)
-        if len(tokens) == 0 and use_generic:
-            if self.is_generic(noun) and verbose:
-                print(colored("warning:", "yellow"), "using generic token", noun)
-            tokens.append(noun)
+        if len(tokens) == 0:
+            if use_generic or not self.is_generic(noun):
+                if verbose and self.is_generic(noun):
+                    print(colored("warning:", "yellow"), "using generic token", noun)
+                tokens.append(noun)
         return tokens 
 
     def noun_same(self, n1, n2):
