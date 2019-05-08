@@ -113,7 +113,7 @@ class KnowledgeGraph:
 
     def verb_same(self, v1, v2):
         verb_similarity = v1.similarity(v2)
-        return verb_similarity > self.verb_threshold
+        return v1.lemma_ == v2.lemma_ or verb_similarity > self.verb_threshold
 
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis):
