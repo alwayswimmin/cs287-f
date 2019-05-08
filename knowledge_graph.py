@@ -111,10 +111,13 @@ class KnowledgeGraph:
                 missing_nouns.append(n)
         return contained_nouns, missing_nouns
 
+    def verb_same(self, v1, v2):
+        verb_similarity = v1.similarity(v2)
+        return verb_similarity > self.verb_threshold
+
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis):
-        verb_similarity = premise[0].similarity(hypothesis[0])
-        if verb_similarity < self.verb_threshold:
+        if not verb_same(premise[0], hypothesis[0])
             return self.dissimilar_verbs, hypothesis
         actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
         acted_acted = self.noun_intersect_setminus(premise[2], hypothesis[2])
