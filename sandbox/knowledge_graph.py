@@ -38,6 +38,9 @@ class KnowledgeGraph:
                 for grandchild in child.children:
                     if grandchild.dep_ == "pobj":
                         actors.append(grandchild)
+        if verb.dep_ == "acl":
+            if verb.text[-3:] == "ing":
+                actors.append(verb.head)
         return actors
 
     def get_acteds(self, verb):
@@ -45,6 +48,9 @@ class KnowledgeGraph:
         for child in verb.children:
             if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
                 acteds.append(child)
+        if verb.dep_ == "acl":
+            if verb.text[-3:] != "ing":
+                acteds.append(verb.head)
         return acteds
 
     def get_relation(self, verb):
