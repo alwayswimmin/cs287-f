@@ -420,28 +420,28 @@ if __name__ == "__main__":
     scores = []
     avg_lengths = []
     with open("data/bottom-up/test.txt.src.tagged.shuf.400words") as src:
-    with open("data/bottom-up/test.txt.tgt.tagged.shuf.noslash") as tgt:
-        with open("data/bottom-up/bottom_up_cnndm_015_threshold.out") as gen:
-            for i, (orig_src_line, tgt_line, gen_line) in enumerate(zip(src, tgt, gen)):
-                if line_num > 0 and not i == line_num:
-                    continue
-                if line_num == 0 and i >= 40:
-                    break
-                orig_src_line = clean_src(orig_src_line)
-                tgt_line = clean_src(tgt_line)
-                src_line = tgt_line + ' ' + orig_src_line
-                gen_line = clean_gen(gen_line)
-                important_relations, score, (colored_src, colored_gen) = test(src_line, gen_line)
-                print("===========================================================================================")
-                print(f"Src {i}:"%{i:i}, colored_src)
-                print("===========================================================================================")
-                print(f"Summary {i}:"%{i:i}, colored_gen)
-                print("Score:", score)
-                avg_length = avg_copy_length(orig_src_line, gen_line)
-                print("Avg copy length:", avg_length)
-                print("===========================================================================================")
-                print("===========================================================================================")
-                scores.append(score)
+        with open("data/bottom-up/test.txt.tgt.tagged.shuf.noslash") as tgt:
+            with open("data/bottom-up/bottom_up_cnndm_015_threshold.out") as gen:
+                for i, (orig_src_line, tgt_line, gen_line) in enumerate(zip(src, tgt, gen)):
+                    if line_num > 0 and not i == line_num:
+                        continue
+                    if line_num == 0 and i >= 40:
+                        break
+                    orig_src_line = clean_src(orig_src_line)
+                    tgt_line = clean_src(tgt_line)
+                    src_line = tgt_line + ' ' + orig_src_line
+                    gen_line = clean_gen(gen_line)
+                    important_relations, score, (colored_src, colored_gen) = test(src_line, gen_line)
+                    print("===========================================================================================")
+                    print(f"Src {i}:"%{i:i}, colored_src)
+                    print("===========================================================================================")
+                    print(f"Summary {i}:"%{i:i}, colored_gen)
+                    print("Score:", score)
+                    avg_length = avg_copy_length(orig_src_line, gen_line)
+                    print("Avg copy length:", avg_length)
+                    print("===========================================================================================")
+                    print("===========================================================================================")
+                    scores.append(score)
 
 
                 
