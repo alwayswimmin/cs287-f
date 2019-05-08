@@ -231,27 +231,36 @@ def clean_gen(s):
     return ' '.join(s2)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Analyze Bottom-Up Abstraction Outputs.')
-    parser.add_argument('indices', metavar='i', type=int, nargs='+', default=-1,
-                        help='indices to test')
-    parser.add_argument('--print_scores', dest='print_scores',
+    parser = argparse.ArgumentParser(description='Analyze Summary Outputs.')
+    parser.add_argument('--document', dest='document', metavar='d', type=str, 
+                        default='data/bottom-up/test.txt.src.tagged.shuf.400words', help='source document path')
+    parser.add_argument('--summary', dest='summary', metavar='s', type=str, 
+                        default='data/bottom-up/bottom_up_cnndm_015_threshold.out', help='generated summary path')
+    parser.add_argument('--indices', dest='indices', metavar='i', type=int, nargs='*',
+                        default=[], help='indices to test')
+    parser.add_argument('--language-model', dest='lm', metavar='m', type=str,
+                        default='en_core_web_lg',
+                        help='language model (default: en_core_web_lg)')
+    parser.add_argument('--print-scores', dest='print_scores',
                         action='store_const', const=True, default=False,
                         help='score prints (default: False)')
-    parser.add_argument('--draw', dest='draw', action='store_const',
+    parser.add_argument('--draw-histogram', dest='draw', action='store_const',
                         const=True, default=False,
                         help='draw histogram (default: False)')
     parser.add_argument('--verbose', dest='verbose', action='store_const',
                         const=True, default=False,
                         help='verbose prints (default: False)')
     args = parser.parse_args()
+    document = args.document
+    summary = args.summary
     indices = args.indices
     print_scores = args.print_scores
     verbose = args.verbose
     draw = args.draw
 
     scores = []
-    with open("data/test.txt.src.tagged.shuf.400words") as src:
-        with open("data/bottom_up_cnndm_015_threshold.out") as gen:
+    with open(document) as src:
+        with open(summary) as gen:
             for i, (src_line, gen_line) in enumerate(zip(src, gen)):
                 if -1 not in indices and i not in indices:
                     continue
