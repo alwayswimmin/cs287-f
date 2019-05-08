@@ -1,3 +1,5 @@
+import spacy
+
 def clean(s):
     s = s.split()
     # remove everything from "-lrb-" to "-rrb-"
@@ -29,6 +31,12 @@ def clean(s):
         
     return ' '.join(s2)
 
+def equivalent(w1, w2):
+    if isinstance(w1, spacy.tokens.token.Token):
+        w1 = w1.text
+    if isinstance(w2, spacy.tokens.token.Token):
+        w2 = w2.text
+    return w1 == w2
 
 
 # `document` and `summary` are arrays
@@ -40,16 +48,16 @@ def copy_annotations(document, summary):
         best_copy_length_left = -1
         best_copy_length_right = -1
         for document_index in range(len(document)):
-            if summary[summary_index] != document[document_index]:
+            if not equivalent(summary[summary_index], document[document_index]):
                 continue
             left = right = 0
             while summary_index > left and document_index > left:
-                if summary[summary_index - left - 1] == document[document_index - left - 1]:
+                if equivalent(summary[summary_index - left - 1], document[document_index - left - 1]):
                     left += 1
                 else:
                     break
             while summary_index + right + 1 < len(summary) and document_index + right + 1 < len(document):
-                if summary[summary_index + right + 1] == document[document_index + right + 1]:
+                if equivalent(summary[summary_index + right + 1], document[document_index + right + 1]):
                     right += 1
                 else:
                     break
