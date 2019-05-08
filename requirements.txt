@@ -4,4 +4,5 @@ numpy
 seaborn
 spacy
 termcolor
+rouge
 git+https://github.com/harvardnlp/namedtensor
