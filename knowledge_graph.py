@@ -8,7 +8,8 @@ warnings.filterwarnings("ignore")
 
 class KnowledgeGraph:
 
-    def __init__(self, verbose=False):
+    def __init__(self, nlp, verbose=False):
+        self.nlp = nlp
         self.verbose = verbose
         self.relations = list()
         self.noun_threshold = 0.8

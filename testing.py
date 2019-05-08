@@ -17,7 +17,7 @@ def test(nlp, src, gen, verbose=False):
     gen = nlp(gen)
     if verbose:
         print("clusters:", src._.coref_clusters)
-    kg = KnowledgeGraph(verbose)
+    kg = KnowledgeGraph(nlp, verbose)
     for token in src:
         if token.pos_ == "VERB":
             kg.add_verb(token)
