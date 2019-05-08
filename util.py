@@ -15,11 +15,20 @@ def clean(s):
         elif(ixw <= len(s)-1 and w==":" and s[ixw-1]=="new"):
             continue
         elif(len(w) > 1 and w[0] == '\''):
-            s2[-1] = s2[-1]+w
+            if(w[-1] == '\''):
+                s2.append('\'')
+                s2.append(w[1:-1])
+                s2.append('\'')
+            elif len(s2) > 0:
+                s2[-1] = s2[-1]+w
+            else:
+                s2.append(w)
+                
         elif not in_paren and not (w == '<t>' or w == '</t>'):
             s2.append(w)
         
     return ' '.join(s2)
+
 
 
 # `document` and `summary` are arrays
