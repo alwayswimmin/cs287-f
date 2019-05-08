@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser.add_argument('--cache-dir', dest='cache_dir', metavar='c', type=str, 
             default='', help="directory for cached numpy entries (default: don't cache)")
     parser.add_argument('--indices', dest='indices', metavar='i', type=int, nargs='*',
-                        default=[], help='indices to test')
+            default=[], help='indices to test (default: everything)')
     parser.add_argument('--language-model', dest='lm', metavar='m', type=str,
                         default='en_core_web_lg',
                         help='language model (default: en_core_web_lg)')
