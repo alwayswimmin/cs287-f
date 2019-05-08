@@ -7,7 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from termcolor import colored
 from knowledge_graph import KnowledgeGraph
-# from annotator import Annotator
+from annotator import Annotator
 import util
 from rouge import Rouge
 
