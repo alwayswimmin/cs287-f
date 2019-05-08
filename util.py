@@ -4,17 +4,23 @@ def clean(s):
     s2 = []
     in_paren = False
     for ixw, w in enumerate(s):
-        if w == "-lrb-":
-            in_paren = True
-        elif w == "-rrb-":
-            in_paren = False
-        elif w == "-lsb-" or w == "-rsb-":
+        if(w=="-lrb-"):
+            in_paren=True
+        elif(w=='-rrb-'):
+            in_paren=False
+        elif(w=="-lsb-" or w=="-rsb-"):
             continue
-        elif len(s2) > 0 and len(w) > 1 and w[0] == '\'':
-            s2[-1] = s2[-1] + w
+        elif(ixw <= len(s)-2 and w=="new" and s[ixw+1]==":"):
+            continue
+        elif(ixw <= len(s)-1 and w==":" and s[ixw-1]=="new"):
+            continue
+        elif(len(w) > 1 and w[0] == '\''):
+            s2[-1] = s2[-1]+w
         elif not in_paren and not (w == '<t>' or w == '</t>'):
             s2.append(w)
+        
     return ' '.join(s2)
+
 
 # `document` and `summary` are arrays
 def copy_annotations(document, summary):
