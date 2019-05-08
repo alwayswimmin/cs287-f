@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser.add_argument('--summary', dest='summary', metavar='s', type=str, 
             default='data/bottom-up/bottom_up_cnndm_015_threshold.out', help='generated summary path (default: bottom-up)')
     parser.add_argument('--cache-dir', dest='cache_dir', metavar='c', type=str, 
-            default='experiments/bottom-up/', help='directory for cached numpy entries (default: bottom-up)')
+            default='', help='directory for cached numpy entries (default: don't cache)')
     parser.add_argument('--indices', dest='indices', metavar='i', type=int, nargs='*',
                         default=[], help='indices to test')
     parser.add_argument('--language-model', dest='lm', metavar='m', type=str,
@@ -112,10 +112,11 @@ if __name__ == "__main__":
                 if print_scores:
                     print()
 
-    if not copy_only:
-        np.save(cache_dir + "scores", scores)
-    if copy:
-        np.save(cache_dir + "average_copy_lengths", average_copy_lengths)
+    if cache_dir:
+        if not copy_only:
+            np.save(cache_dir + "scores", scores)
+        if copy:
+            np.save(cache_dir + "average_copy_lengths", average_copy_lengths)
     
     if draw:
         sns.set()
