@@ -7,6 +7,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class KnowledgeGraph:
+    entailment = 0
+    dissimilar_verbs = 1
+    missing_dependencies = 2
+    contradiction = 3
 
     def __init__(self, nlp, verbose=False):
         self.nlp = nlp
@@ -14,10 +18,6 @@ class KnowledgeGraph:
         self.relations = list()
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
-        self.entailment = 0
-        self.dissimilar_verbs = 1
-        self.missing_dependencies = 2
-        self.contradiction = 3
 
     def get_actors(self, verb):
         actors = []
@@ -131,28 +131,28 @@ class KnowledgeGraph:
         missing_deps = actor_actor[1] + acted_acted[1]
         contradiction_deps = actor_acted[0] + acted_actor[0]
         if len(missing_deps) == 0:
-            return self.entailment, ("verb similarity:", verb_similarity,
+            return KnowledgeGraph.entailment, ("verb similarity:", verb_similarity,
                     "contained dependences:", contained_deps)
         if len(contradiction_deps) > 0:
-            return self.contradiction, ("verb similarity:", verb_similarity,
+            return KnowledgeGraph.contradiction, ("verb similarity:", verb_similarity,
                     "contradictory dependences:", contradiction_deps)
-        return self.missing_dependencies, ("verb similarity:",
+        return KnowledgeGraph.missing_dependencies, ("verb similarity:",
                 verb_similarity, "missing dependencies:", missing_deps)
 
     def query_relation(self, hypothesis):
-        missing_dependencies = []
-        contradiction = []
+        missing_deps = []
+        contradiction_deps = []
         for premise in self.relations:
             r = self.implied_relation(premise, hypothesis)
-            if r[0] == self.entailment:
-                return r[0], (premise, r[1])
-            elif r[0] == self.missing_dependencies:
-                missing_dependencies.append((premise, r[1]))
-            elif r[0] == self.contradiction:
-                contradiction.append((premise, r[1]))
-        if len(contradiction) > 0:
-            return self.contradiction, contradiction
-        return self.missing_dependencies, missing_dependencies
+            if r[0] == KnowledgeGraph.entailment:
+                return r[0], [(premise, r[1])]
+            elif r[0] == KnowledgeGraph.missing_dependencies:
+                missing_deps.append((premise, r[1]))
+            elif r[0] == KnowledgeGraph.contradiction:
+                contradiction_deps.append((premise, r[1]))
+        if len(contradiction_deps) > 0:
+            return KnowledgeGraph.contradiction, contradiction_deps
+        return KnowledgeGraph.missing_dependencies, missing_deps
 
     # returns (result, proof)
     def query_verb(self, verb):

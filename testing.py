@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from termcolor import colored
 from knowledge_graph import KnowledgeGraph
+from annotator import Annotator
 import util
 from rouge import Rouge
 
@@ -19,6 +20,8 @@ def test(nlp, src, gen, verbose=False):
     if verbose:
         print("clusters:", src._.coref_clusters)
     kg = KnowledgeGraph(nlp, verbose)
+    if verbose:
+        annotator = Annotator(src, gen)
     for token in src:
         if token.pos_ == "VERB":
             kg.add_verb(token)
@@ -29,16 +32,22 @@ def test(nlp, src, gen, verbose=False):
             total += 1
             relation = kg.get_relation(token)
             r = kg.query_relation(relation)
-            if r[0] == kg.entailment:
+            if r[0] == KnowledgeGraph.entailment:
                 if verbose:
                     print("contained |", relation, "|", r[1])
                 contained += 1
-            elif r[0] == kg.missing_dependencies:
+            elif r[0] == KnowledgeGraph.missing_dependencies:
                 if verbose:
-                    print(colored("missing", "red"), "|", relation, "|", r[1])
-            elif r[0] == kg.contradiction:
+                    print(colored("missing", "yellow"), "|", relation, "|", r[1])
+            elif r[0] == KnowledgeGraph.contradiction:
                 if verbose:
                     print(colored("contradiction", "red"), "|", relation, "|", r[1])
+            if verbose:
+                annotator.annotate(relation, r)
+    if verbose:
+        annotated_document, annotated_summary = annotator.annotated()
+        print("Document:", " ".join(annotated_document))
+        print("Summary:", " ".join(annotated_summary))
     if total == 0:
         return 0.0
     return 100.0 * contained / total
