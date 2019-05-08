@@ -84,7 +84,7 @@ if __name__ == "__main__":
     draw = args.draw
     language_model = args.lm
 
-    if copy_only:
+    if not copy_only:
         nlp = spacy.load(language_model)
         neuralcoref.add_to_pipe(nlp, greedyness=0.50, max_dist=500)
 
