@@ -76,7 +76,7 @@ class KnowledgeGraph:
                 tokens.append(noun)
         return tokens 
 
-    def noun_same(self, n1, n2):
+    def noun_similarity(self, n1, n2):
         tokens1 = self.get_valid_cluster_tokens(n1)
         tokens2 = self.get_valid_cluster_tokens(n2)
         if len(tokens1) == 0 or len(tokens2) == 0:
@@ -91,8 +91,8 @@ class KnowledgeGraph:
                     maximum_similarity = token_similarity
                     maximum_pair = token1, token2
         if maximum_similarity > self.noun_threshold:
-            return True, ("best match:", maximum_similarity, maximum_pair)
-        return False, ("best match:", maximum_similarity, maximum_pair)
+            return maximum_similarity, ("best match:", maximum_similarity, maximum_pair)
+        return maximum_similarity, ("best match:", maximum_similarity, maximum_pair)
 
     def noun_intersect_setminus(self, supset, subset):
         contained_nouns = []
@@ -100,10 +100,10 @@ class KnowledgeGraph:
         for n in subset:
             contained = False
             for n2 in supset:
-                r = self.noun_same(n, n2)
+                r = self.noun_similarity(n, n2)
                 if self.verbose:
                     print(n, n2, r)
-                if r[0]:
+                if r[0] > self.noun_threshold:
                     contained = True
                     contained_nouns.append((n, n2, r[1]))
                     continue
@@ -111,13 +111,16 @@ class KnowledgeGraph:
                 missing_nouns.append(n)
         return contained_nouns, missing_nouns
 
-    def verb_same(self, v1, v2):
+    def verb_similarity(self, v1, v2):
         verb_similarity = v1.similarity(v2)
-        return v1.lemma_ == v2.lemma_ or verb_similarity > self.verb_threshold
+        if v1.lemma_ == v2.lemma_:
+            verb_similarity = max(0.95, verb_similarity)
+        return verb_similarity
 
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis):
-        if not verb_same(premise[0], hypothesis[0])
+        verb_similarity = self.verb_similarity(premise[0], hypothesis[0])
+        if verb_similarity < self.verb_threshold:
             return self.dissimilar_verbs, hypothesis
         actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
         acted_acted = self.noun_intersect_setminus(premise[2], hypothesis[2])
