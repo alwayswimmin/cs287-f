@@ -5,5 +5,4 @@ seaborn
 spacy
 termcolor
 rouge
-annotator
 git+https://github.com/harvardnlp/namedtensor
