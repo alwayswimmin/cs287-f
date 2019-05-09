@@ -26,6 +26,8 @@ def test(nlp, src, gen, verbose=False):
         if token.pos_ == "VERB":
             kg.add_verb(token)
     contained = 0
+    missing = 0
+    contradiction = 0
     total = 0
     for token in gen:
         if token.pos_ == "VERB":
@@ -37,9 +39,11 @@ def test(nlp, src, gen, verbose=False):
                     print("contained |", relation, "|", r[1])
                 contained += 1
             elif r[0] == KnowledgeGraph.missing_dependencies:
+                missing += 1
                 if verbose:
                     print(colored("missing", "yellow"), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.contradiction:
+                contradiction += 1
                 if verbose:
                     print(colored("contradiction", "red"), "|", relation, "|", r[1])
             if verbose:
@@ -50,7 +54,7 @@ def test(nlp, src, gen, verbose=False):
         print("Summary:", " ".join(annotated_summary))
     if total == 0:
         return 0.0
-    return 100.0 * contained / total
+    return 100.0 * contained / total, 100.0 * missing / total, 100.0 * contradiction / total
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze Summary Outputs.')
@@ -107,7 +111,9 @@ if __name__ == "__main__":
         nlp = spacy.load(language_model)
         neuralcoref.add_to_pipe(nlp, greedyness=0.50, max_dist=500)
 
-    scores = []
+    contained_scores = []
+    missing_scores = []
+    contradiction_scores = []
     rouge_scores = []
     average_copy_lengths = []
     r = Rouge()
@@ -125,7 +131,10 @@ if __name__ == "__main__":
                         print(i, end = "\t")
                     if not copy_only:
                         score = test(nlp, src_line, gen_line, verbose)
-                        scores.append(score)
+                        contained, missing, contradiction = score
+                        contained_scores.append(contained)
+                        missing_scores.append(missing)
+                        contradiction_scores.append(contradiction)
                         if print_scores:
                             print("score:", score, end = "\t")
                     if copy:
@@ -145,7 +154,9 @@ if __name__ == "__main__":
 
     if cache_dir:
         if not copy_only:
-            np.save(cache_dir + "scores", scores)
+            np.save(cache_dir + "scores", contained_scores)
+            np.save(cache_dir + "missing_scores", missing_scores)
+            np.save(cache_dir + "contradiction_scores", contradiction_scores)
         if copy:
             np.save(cache_dir + "average_copy_lengths", average_copy_lengths)
         if rouge:
