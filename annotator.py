@@ -4,9 +4,12 @@ from termcolor import colored
 
 class Annotator:
     copied_word = 1
-    missing = 2 << KnowledgeGraph.missing_dependencies
+    missing_dependencies = 2 << KnowledgeGraph.missing_dependencies
+    missing_verb = 2 << KnowledgeGraph.missing_verb
     entailment = 2 << KnowledgeGraph.entailment
     contradiction = 2 << KnowledgeGraph.contradiction
+    invalid_simplification = 2 << KnowledgeGraph.invalid_simplification
+
     def __init__(self, document, summary):
         self.document = document
         self.summary = summary
@@ -49,7 +52,11 @@ class Annotator:
             return 'red'
         if annotation & Annotator.entailment:
             return 'blue'
-        if annotation & Annotator.missing:
+        if annotation & Annotator.invalid_simplification:
+            return 'magenta'
+        if annotation & Annotator.missing_dependencies:
+            return 'yellow'
+        if annotation & Annotator.missing_verb:
             return 'yellow'
         return None
     

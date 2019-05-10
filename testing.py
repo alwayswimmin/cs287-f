@@ -28,6 +28,7 @@ def test(nlp, src, gen, verbose=False):
     contained = 0
     missing = 0
     contradiction = 0
+    invalid_simplification = 0
     total = 0
     for token in gen:
         if token.pos_ == "VERB":
@@ -41,7 +42,16 @@ def test(nlp, src, gen, verbose=False):
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing += 1
                 if verbose:
-                    print(colored("missing", "yellow"), "|", relation, "|", r[1])
+                    print(colored("missing actor", "yellow"), "|", relation, "|", r[1])
+            elif r[0] == KnowledgeGraph.missing_verb:
+                missing += 1
+                if verbose:
+                    print(colored("missing verb", "yellow"), "|", relation, "|", r[1])
+            elif r[0] == KnowledgeGraph.invalid_simplification:
+                invalid_simplification += 1
+                if verbose:
+                    print(colored("invalid simplification", "magenta"), "|",
+                            relation, "|", r[1])
             elif r[0] == KnowledgeGraph.contradiction:
                 contradiction += 1
                 if verbose:
@@ -54,7 +64,7 @@ def test(nlp, src, gen, verbose=False):
         print("Summary:", " ".join(annotated_summary))
     if total == 0:
         return 0.0
-    return 100.0 * contained / total, 100.0 * missing / total, 100.0 * contradiction / total
+    return 100.0 * contained / total, 100.0 * missing / total, 100.0 * contradiction / total, 100.0 * invalid_simplification / total
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze Summary Outputs.')
@@ -114,6 +124,7 @@ if __name__ == "__main__":
     contained_scores = []
     missing_scores = []
     contradiction_scores = []
+    invalid_simplification_scores = []
     rouge_scores = []
     average_copy_lengths = []
     r = Rouge()
@@ -131,10 +142,11 @@ if __name__ == "__main__":
                         print(i, end = "\t")
                     if not copy_only:
                         score = test(nlp, src_line, gen_line, verbose)
-                        contained, missing, contradiction = score
+                        contained, missing, contradiction, invalid_simplification = score
                         contained_scores.append(contained)
                         missing_scores.append(missing)
                         contradiction_scores.append(contradiction)
+                        invalid_simplification_scores.append(invalid_simplification)
                         if print_scores:
                             print("score:", score, end = "\t")
                     if copy:
@@ -157,6 +169,8 @@ if __name__ == "__main__":
             np.save(cache_dir + "scores", contained_scores)
             np.save(cache_dir + "missing_scores", missing_scores)
             np.save(cache_dir + "contradiction_scores", contradiction_scores)
+            np.save(cache_dir + "invalid_simplification_scores",
+                    invalid_simplification_scores)
         if copy:
             np.save(cache_dir + "average_copy_lengths", average_copy_lengths)
         if rouge:

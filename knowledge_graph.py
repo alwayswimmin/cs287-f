@@ -8,9 +8,20 @@ warnings.filterwarnings("ignore")
 
 class KnowledgeGraph:
     entailment = 0
-    dissimilar_verbs = 1
+    missing_verb = 1
+    # could not find a verb that compares favorably
     missing_dependencies = 2
+    # generic missing dependency fallback
     contradiction = 3
+    # contradiction: a noun is claimed to be the subject when it is really the
+    # object, or vice versa.
+    missing_actors = 4
+    # actors are missing, but all acteds are found
+    missing_acteds = 5
+    # acteds are missing, but all actors are found
+    invalid_simplification = 6
+    # invalid simplification: a subject, verb pair and a verb, object pair is
+    # collapsed to a subject, verb, object tuple, but that tuple is unattested.
 
     def __init__(self, nlp, verbose=False):
         self.nlp = nlp
@@ -119,39 +130,73 @@ class KnowledgeGraph:
         return verb_similarity
 
     # returns (result, proof)
-    def implied_relation(self, premise, hypothesis):
+    def implied_relation(self, premise, hypothesis, ignore_verb_dissimilarity=False):
         verb_similarity = self.verb_similarity(premise[0], hypothesis[0])
-        if verb_similarity < self.verb_threshold:
-            return self.dissimilar_verbs, hypothesis
+        if not ignore_verb_dissimilarity and verb_similarity < self.verb_threshold:
+            return self.missing_verb, ("verb similarity:", verb_similarity,
+                    "missing verb", hypothesis)
         actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
         acted_acted = self.noun_intersect_setminus(premise[2], hypothesis[2])
         actor_acted = self.noun_intersect_setminus(premise[1], hypothesis[2])
         acted_actor = self.noun_intersect_setminus(premise[2], hypothesis[1])
         contained_deps = actor_actor[0] + acted_acted[0]
-        missing_deps = actor_actor[1] + acted_acted[1]
+        missing_actors = actor_actor[1] 
+        missing_acteds = acted_acted[1]
         contradiction_deps = actor_acted[0] + acted_actor[0]
-        if len(missing_deps) == 0:
+        if len(missing_actors) == 0 and len(missing_acteds) == 0:
             return KnowledgeGraph.entailment, ("verb similarity:", verb_similarity,
                     "contained dependences:", contained_deps)
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, ("verb similarity:", verb_similarity,
                     "contradictory dependences:", contradiction_deps)
+        if len(missing_actors) == 0:
+            return KnowledgeGraph.missing_acteds, ("verb similarity:",
+                    verb_similarity, "missing acteds:", missing_acteds)
+        if len(missing_acteds) == 0:
+            return KnowledgeGraph.missing_actors, ("verb similarity:",
+                    verb_similarity, "missing actors:", missing_actors)
         return KnowledgeGraph.missing_dependencies, ("verb similarity:",
-                verb_similarity, "missing dependencies:", missing_deps)
+                verb_similarity, "missing dependencies:", missing_actors +
+                missing_acteds)
 
     def query_relation(self, hypothesis):
         missing_deps = []
+        missing_actors = []
+        missing_acteds = []
         contradiction_deps = []
+        best_verb_similarity = 0.0
+        closest_verb_premise = None
+        entailed_without_verb = None
         for premise in self.relations:
             r = self.implied_relation(premise, hypothesis)
             if r[0] == KnowledgeGraph.entailment:
                 return r[0], [(premise, r[1])]
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing_deps.append((premise, r[1]))
+            elif r[0] == KnowledgeGraph.missing_actors:
+                missing_actors.append((premise, r[1]))
+            elif r[0] == KnowledgeGraph.missing_acteds:
+                missing_acteds.append((premise, r[1]))
             elif r[0] == KnowledgeGraph.contradiction:
                 contradiction_deps.append((premise, r[1]))
+            elif r[0] == KnowledgeGraph.missing_verb:
+                if r[1][1] > best_verb_similarity:
+                    closest_verb_premise = premise
+                    best_verb_similarity = r[1][1]
+            r = self.implied_relation(premise, hypothesis, ignore_verb_dissimilarity=True)
+            if r[0] == KnowledgeGraph.entailment:
+                entailed_without_verb = [(premise, r[1])]
+        if entailed_without_verb is not None:
+            return KnowledgeGraph.missing_verb, entailed_without_verb
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
+        if len(missing_actors) > 0 or len(missing_acteds) > 0:
+            return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
+        # uncomment this to return the closest verb in the event that no actual
+        # verb to which we can compare is found.
+        # if len(missing_deps) > 0:
+        #     return KnowledgeGraph.missing_dependencies, missing_deps
+        # return KnowledgeGraph.missing_verb, [(closest_verb_premise, r[1])]
         return KnowledgeGraph.missing_dependencies, missing_deps
 
     # returns (result, proof)
