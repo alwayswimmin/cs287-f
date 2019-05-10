@@ -1,7 +1,9 @@
 import spacy
 import neuralcoref
 import numpy as np
+import util
 from termcolor import colored
+from BERT.nli_classification import bert_nli_classification
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -23,9 +25,10 @@ class KnowledgeGraph:
     # invalid simplification: a subject, verb pair and a verb, object pair is
     # collapsed to a subject, verb, object tuple, but that tuple is unattested.
 
-    def __init__(self, nlp, verbose=False):
+    def __init__(self, nlp, use_bert=False, verbose=False):
         self.nlp = nlp
         self.verbose = verbose
+        self.use_bert = use_bert
         self.relations = list()
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
@@ -166,7 +169,7 @@ class KnowledgeGraph:
         contradiction_deps = []
         best_verb_similarity = 0.0
         closest_verb_premise = None
-        entailed_without_verb = None
+        entailed_without_verb = []
         for premise in self.relations:
             r = self.implied_relation(premise, hypothesis)
             if r[0] == KnowledgeGraph.entailment:
@@ -185,11 +188,18 @@ class KnowledgeGraph:
                     best_verb_similarity = r[1][1]
             r = self.implied_relation(premise, hypothesis, ignore_verb_dissimilarity=True)
             if r[0] == KnowledgeGraph.entailment:
-                entailed_without_verb = [(premise, r[1])]
-        if entailed_without_verb is not None:
-            return KnowledgeGraph.missing_verb, entailed_without_verb
+                entailed_without_verb.append((premise, r[1]))
+        if len(entailed_without_verb) > 0 and self.use_bert:
+            hypothesis_minimal = util.build_minimal_sentence(hypothesis)
+            for premise, proof in entailed_without_verb:
+                premise_minimal = util.build_minimal_sentence(premise)
+                logits = bert_nli_classification(premise_minimal, hypothesis_minimal)
+                if logits.argmax() == 1:
+                    return KnowledgeGraph.entailment, [(premise, r[1], logits)]
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
+        if len(entailed_without_verb) > 0:
+            return KnowledgeGraph.missing_verb, entailed_without_verb
         if len(missing_actors) > 0 or len(missing_acteds) > 0:
             return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
         # uncomment this to return the closest verb in the event that no actual

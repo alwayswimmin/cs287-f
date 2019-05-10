@@ -79,3 +79,9 @@ def average_copy_length(document, summary):
         summary = summary.split()
     document_annotations, summary_annotations = copy_annotations(document, summary)
     return sum(summary_annotations) / len(summary)
+
+def build_minimal_sentence(relation):
+    verb = relation[0]
+    actors = relation[1]
+    acteds = relation[2]
+    return " ".join([token.text for token in actors + [verb] + acteds])

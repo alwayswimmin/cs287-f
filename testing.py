@@ -11,7 +11,7 @@ from annotator import Annotator
 import util
 from rouge import Rouge
 
-def test(nlp, src, gen, verbose=False):
+def test(nlp, src, gen, bert=False, verbose=False):
     if verbose:
         print("source:", src_line[:50])
         print("summary:", gen_line[:50])
@@ -19,7 +19,7 @@ def test(nlp, src, gen, verbose=False):
     gen = nlp(gen)
     if verbose:
         print("clusters:", src._.coref_clusters)
-    kg = KnowledgeGraph(nlp, verbose)
+    kg = KnowledgeGraph(nlp, use_bert=bert, verbose=verbose)
     if verbose:
         annotator = Annotator(src, gen)
     for token in src:
@@ -99,6 +99,9 @@ if __name__ == "__main__":
     parser.add_argument('--rouge', dest='rouge', action='store_const',
                         const=True, default=False,
                         help='calculate ROUGE scores (default: False)')
+    parser.add_argument('--bert', dest='bert', action='store_const',
+                        const=True, default=False,
+                        help='use BERT to resolve cases where only the verb disagrees (default: False)')
 
     args = parser.parse_args()
     document = args.document
@@ -111,6 +114,7 @@ if __name__ == "__main__":
     copy = args.copy
     copy_only = args.copy_only
     rouge = args.rouge
+    bert = args.bert
 
     if copy_only:
         copy = True
@@ -141,7 +145,7 @@ if __name__ == "__main__":
                     if print_scores:
                         print(i, end = "\t")
                     if not copy_only:
-                        score = test(nlp, src_line, gen_line, verbose)
+                        score = test(nlp, src_line, gen_line, bert=bert, verbose=verbose)
                         contained, missing, contradiction, invalid_simplification = score
                         contained_scores.append(contained)
                         missing_scores.append(missing)
