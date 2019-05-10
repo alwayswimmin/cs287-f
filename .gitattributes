@@ -7,3 +7,6 @@ data/bottom-up filter=lfs diff=lfs merge=lfs -text
 data/fast-abs-RL filter=lfs diff=lfs merge=lfs -text
 data/pointer-generator filter=lfs diff=lfs merge=lfs -text
 data/testing filter=lfs diff=lfs merge=lfs -text
+BERT/* filter=lfs diff=lfs merge=lfs -text
+BERT/model-9818.pth filter=lfs diff=lfs merge=lfs -text
+BERT/bert-uncased-vocab.txt filter=lfs diff=lfs merge=lfs -text
