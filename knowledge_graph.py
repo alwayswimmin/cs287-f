@@ -35,34 +35,9 @@ class KnowledgeGraph:
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
 
-    def get_actors(self, verb):
-        actors = []
-        for child in verb.children:
-            if child.dep_ == "nsubj":
-                actors.extend(util.get_conj(child))
-            elif child.dep_ == "agent":
-                # passive, look for true actor
-                for grandchild in child.children:
-                    if grandchild.dep_ == "pobj":
-                        actors.extend(util.get_conj(child))
-        if verb.dep_ == "acl":
-            if verb.text[-3:] == "ing":
-                actors.append(verb.head)
-        return actors
-
-    def get_acteds(self, verb):
-        acteds = []
-        for child in verb.children:
-            if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
-                acteds.extend(util.get_conj(child))
-        if verb.dep_ == "acl":
-            if verb.text[-3:] != "ing":
-                acteds.append(verb.head)
-        return acteds
-
     def get_relation(self, verb):
-        actors = self.get_actors(verb)
-        acteds = self.get_acteds(verb)
+        actors = util.get_actors(verb)
+        acteds = util.get_acteds(verb)
         return verb, actors, acteds
 
     def add_verb(self, verb):

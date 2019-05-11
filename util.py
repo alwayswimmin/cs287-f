@@ -31,6 +31,43 @@ def clean(s):
         
     return ' '.join(s2)
 
+def get_conj(noun):
+    stack = [noun]
+    conj_list = [noun]
+    while len(stack) > 0:
+        noun = stack.pop()
+        for child in noun.children:
+            if child.dep_ == "conj":
+                conj_list.append(child)
+                stack.append(child)
+    return conj_list
+
+def get_actors(verb):
+    actors = []
+    for child in verb.children:
+        if child.dep_ == "nsubj":
+            actors.extend(get_conj(child))
+        elif child.dep_ == "agent":
+            # passive, look for true actor
+            for grandchild in child.children:
+                if grandchild.dep_ == "pobj":
+                    actors.extend(get_conj(child))
+    if verb.dep_ == "acl":
+        if verb.text[-3:] == "ing":
+            actors.append(verb.head)
+    return actors
+
+def get_acteds(verb):
+    acteds = []
+    for child in verb.children:
+        if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
+            acteds.extend(get_conj(child))
+    if verb.dep_ == "acl":
+        if verb.text[-3:] != "ing":
+            acteds.append(verb.head)
+    return acteds
+
+
 def equivalent(w1, w2):
     if isinstance(w1, spacy.tokens.token.Token):
         w1 = w1.text
@@ -86,13 +123,3 @@ def build_minimal_sentence(relation):
     acteds = relation[2]
     return " ".join([token.text for token in actors + [verb] + acteds])
 
-def get_conj(noun):
-    stack = [noun]
-    conj_list = [noun]
-    while len(stack) > 0:
-        noun = stack.pop()
-        for child in noun.children:
-            if child.dep_ == "conj":
-                conj_list.append(child)
-                stack.append(child)
-    return conj_list
