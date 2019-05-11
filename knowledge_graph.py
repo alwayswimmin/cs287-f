@@ -39,12 +39,12 @@ class KnowledgeGraph:
         actors = []
         for child in verb.children:
             if child.dep_ == "nsubj":
-                actors.append(child)
+                actors.extend(util.get_conj(child))
             elif child.dep_ == "agent":
                 # passive, look for true actor
                 for grandchild in child.children:
                     if grandchild.dep_ == "pobj":
-                        actors.append(grandchild)
+                        actors.extend(util.get_conj(child))
         if verb.dep_ == "acl":
             if verb.text[-3:] == "ing":
                 actors.append(verb.head)
@@ -54,7 +54,7 @@ class KnowledgeGraph:
         acteds = []
         for child in verb.children:
             if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
-                acteds.append(child)
+                acteds.extend(util.get_conj(child))
         if verb.dep_ == "acl":
             if verb.text[-3:] != "ing":
                 acteds.append(verb.head)

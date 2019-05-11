@@ -85,3 +85,14 @@ def build_minimal_sentence(relation):
     actors = relation[1]
     acteds = relation[2]
     return " ".join([token.text for token in actors + [verb] + acteds])
+
+def get_conj(noun):
+    stack = [noun]
+    conj_list = [noun]
+    while len(stack) > 0:
+        noun = stack.pop()
+        for child in noun.children:
+            if child.dep_ == "conj":
+                conj_list.append(child)
+                stack.append(child)
+    return conj_list
