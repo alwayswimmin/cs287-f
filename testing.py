@@ -26,6 +26,7 @@ def test(nlp, src, gen, bert=False, verbose=False):
         if token.pos_ == "VERB":
             kg.add_verb(token)
     contained = 0
+    contained_bert = 0
     missing = 0
     contradiction = 0
     invalid_simplification = 0
@@ -39,6 +40,10 @@ def test(nlp, src, gen, bert=False, verbose=False):
                 if verbose:
                     print("contained |", relation, "|", r[1])
                 contained += 1
+            if r[0] == KnowledgeGraph.entailment_bert:
+                if verbose:
+                    print("contained (bert) |", relation, "|", r[1])
+                contained_bert += 1
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing += 1
                 if verbose:
@@ -64,7 +69,7 @@ def test(nlp, src, gen, bert=False, verbose=False):
         print("Summary:", " ".join(annotated_summary))
     if total == 0:
         return 0.0
-    return 100.0 * contained / total, 100.0 * missing / total, 100.0 * contradiction / total, 100.0 * invalid_simplification / total
+    return 100.0 * contained / total, 100.0 * contained_bert / total, 100.0 * missing / total, 100.0 * contradiction / total, 100.0 * invalid_simplification / total
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze Summary Outputs.')
@@ -126,6 +131,7 @@ if __name__ == "__main__":
         neuralcoref.add_to_pipe(nlp, greedyness=0.50, max_dist=500)
 
     contained_scores = []
+    contained_bert_scores = []
     missing_scores = []
     contradiction_scores = []
     invalid_simplification_scores = []
@@ -146,8 +152,9 @@ if __name__ == "__main__":
                         print(i, end = "\t")
                     if not copy_only:
                         score = test(nlp, src_line, gen_line, bert=bert, verbose=verbose)
-                        contained, missing, contradiction, invalid_simplification = score
+                        contained, contained_bert, missing, contradiction, invalid_simplification = score
                         contained_scores.append(contained)
+                        contained_bert_scores.append(contained_bert)
                         missing_scores.append(missing)
                         contradiction_scores.append(contradiction)
                         invalid_simplification_scores.append(invalid_simplification)
@@ -171,6 +178,7 @@ if __name__ == "__main__":
     if cache_dir:
         if not copy_only:
             np.save(cache_dir + "scores", contained_scores)
+            np.save(cache_dir + "contained_bert_scores", contained_bert_scores)
             np.save(cache_dir + "missing_scores", missing_scores)
             np.save(cache_dir + "contradiction_scores", contradiction_scores)
             np.save(cache_dir + "invalid_simplification_scores",

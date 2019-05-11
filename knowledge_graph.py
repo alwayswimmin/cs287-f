@@ -24,6 +24,8 @@ class KnowledgeGraph:
     invalid_simplification = 6
     # invalid simplification: a subject, verb pair and a verb, object pair is
     # collapsed to a subject, verb, object tuple, but that tuple is unattested.
+    entailment_bert = 7
+    # entailed, but requiring bert support, which is sometimes shaky.
 
     def __init__(self, nlp, use_bert=False, verbose=False):
         self.nlp = nlp
@@ -195,7 +197,7 @@ class KnowledgeGraph:
                 premise_minimal = util.build_minimal_sentence(premise)
                 logits = bert_nli_classification(premise_minimal, hypothesis_minimal)
                 if logits.argmax() == 1:
-                    return KnowledgeGraph.entailment, [(premise, r[1], logits)]
+                    return KnowledgeGraph.entailment_bert, [(premise, r[1], logits)]
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:

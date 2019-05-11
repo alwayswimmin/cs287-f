@@ -7,6 +7,7 @@ class Annotator:
     missing_dependencies = 2 << KnowledgeGraph.missing_dependencies
     missing_verb = 2 << KnowledgeGraph.missing_verb
     entailment = 2 << KnowledgeGraph.entailment
+    entailment_bert = 2 << KnowledgeGraph.entailment_bert
     contradiction = 2 << KnowledgeGraph.contradiction
     invalid_simplification = 2 << KnowledgeGraph.invalid_simplification
 
@@ -51,6 +52,8 @@ class Annotator:
         if annotation & Annotator.contradiction:
             return 'red'
         if annotation & Annotator.entailment:
+            return 'blue'
+        if annotation & Annotator.entailment_bert:
             return 'blue'
         if annotation & Annotator.invalid_simplification:
             return 'magenta'
