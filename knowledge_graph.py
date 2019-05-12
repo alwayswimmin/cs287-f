@@ -197,12 +197,12 @@ class KnowledgeGraph:
             if r[0] == KnowledgeGraph.entailment:
                 entailed_without_verb.append((premise, r[1]))
         if len(entailed_without_verb) > 0 and self.use_bert:
-            hypothesis_minimal = util.build_minimal_sentence(hypothesis)
+            hypothesis_sent = util.get_containing_sentence(hypothesis[0])
             contradiction_bert = None
             for premise, proof in entailed_without_verb:
-                premise_minimal = util.build_minimal_sentence(premise)
-                logits = bert_nli_classification(premise_minimal,
-                                                 hypothesis_minimal)
+                premise_sent = util.get_containing_sentence(premise[0])
+                logits = bert_nli_classification(premise_sent,
+                                                 hypothesis_sent)
                 if logits.argmax() == 1: # entailment
                     return KnowledgeGraph.entailment_bert, \
                             [(premise, r[1], logits)]

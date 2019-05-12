@@ -128,6 +128,9 @@ def average_copy_length(document, summary):
                                                                  summary)
     return sum(summary_annotations) / len(summary)
 
+def get_containing_sentence(verb):
+    return " ".join(token.text for token in verb.sent)
+
 def build_minimal_sentence(relation):
     verb = relation[0]
     actors = relation[1]
