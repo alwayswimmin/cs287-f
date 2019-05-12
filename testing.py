@@ -27,9 +27,7 @@ def test(nlp, src, gen, bert=False, verbose=False):
                         verbose=verbose)
     if verbose:
         annotator = Annotator(src, gen)
-    for token in src:
-        if token.pos_ == "VERB":
-            kg.add_verb(token)
+    kg.add_document(src)
     contained = 0
     contained_bert = 0
     missing = 0

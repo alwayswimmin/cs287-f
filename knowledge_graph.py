@@ -55,6 +55,11 @@ class KnowledgeGraph:
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
+    def add_document(self, doc):
+        for token in doc:
+            if token.pos_ == "VERB":
+                self.add_verb(token)
+
     def get_sub_cluster(self, noun, use_generic=False):
         tokens = list()
         if util.is_generic(noun) and noun.head.dep_ == 'relcl':
@@ -131,7 +136,8 @@ class KnowledgeGraph:
         return verb_similarity
 
     # returns (result, proof)
-    def implied_relation(self, premise, hypothesis, ignore_verb_dissimilarity=False):
+    def implied_relation(self, premise, hypothesis,
+                         ignore_verb_dissimilarity=False):
         verb_similarity = self.verb_similarity(premise[0], hypothesis[0])
         if not ignore_verb_dissimilarity and \
                 verb_similarity < self.verb_threshold:
@@ -216,7 +222,8 @@ class KnowledgeGraph:
         # if len(missing_deps) > 0:
         #     return KnowledgeGraph.missing_dependencies, missing_deps
         # return KnowledgeGraph.missing_verb, [(closest_verb_premise, r[1])]
-        return KnowledgeGraph.missing_dependencies, missing_deps
+        return KnowledgeGraph.missing_dependencies, missing_deps + \
+                missing_actors + missing_acteds
 
     # returns (result, proof)
     def query_verb(self, verb):
