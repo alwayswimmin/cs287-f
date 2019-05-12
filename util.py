@@ -91,7 +91,8 @@ def copy_annotations(document, summary):
         best_copy_length_left = -1
         best_copy_length_right = -1
         for document_index in range(len(document)):
-            if not equivalent(summary[summary_index], document[document_index]):
+            if not equivalent(summary[summary_index],
+                              document[document_index]):
                 continue
             left = right = 0
             while summary_index > left and document_index > left:
@@ -99,7 +100,8 @@ def copy_annotations(document, summary):
                     left += 1
                 else:
                     break
-            while summary_index + right + 1 < len(summary) and document_index + right + 1 < len(document):
+            while summary_index + right + 1 < len(summary) and \
+                    document_index + right + 1 < len(document):
                 if equivalent(summary[summary_index + right + 1], document[document_index + right + 1]):
                     right += 1
                 else:
@@ -111,7 +113,9 @@ def copy_annotations(document, summary):
                 best_copy_length_left = left
                 best_copy_length_right = right
         if best_copy_length_index != -1:
-            for document_index in range(best_copy_length_index - best_copy_length_left, best_copy_length_index + best_copy_length_right + 1):
+            for document_index in range(best_copy_length_index -
+                    best_copy_length_left, best_copy_length_index +
+                    best_copy_length_right + 1):
                 document_annotations[document_index] += 1
     return document_annotations, summary_annotations
 
@@ -120,7 +124,8 @@ def average_copy_length(document, summary):
         document = document.split()
     if isinstance(summary, str):
         summary = summary.split()
-    document_annotations, summary_annotations = copy_annotations(document, summary)
+    document_annotations, summary_annotations = copy_annotations(document,
+                                                                 summary)
     return sum(summary_annotations) / len(summary)
 
 def build_minimal_sentence(relation):
