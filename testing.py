@@ -72,7 +72,7 @@ def test(nlp, src, gen, bert=False, verbose=False):
         print("Document:", " ".join(annotated_document))
         print("Summary:", " ".join(annotated_summary))
     if total == 0:
-        return 0.0
+        return 0.0, 0.0, 0.0, 0.0, 0.0
     return 100.0 * contained / total, 100.0 * contained_bert / total, 100.0 * missing / total, 100.0 * contradiction / total, 100.0 * invalid_simplification / total
 
 if __name__ == "__main__":
