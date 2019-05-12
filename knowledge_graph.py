@@ -8,6 +8,13 @@ from BERT.nli_classification import bert_nli_classification
 import warnings
 warnings.filterwarnings("ignore")
 
+class TokenEquivalency:
+    def __init__(self, verbose=False):
+        self.verbose = verbose
+    # return a list of tokens considered equivalent
+    def __call__(self, token):
+        return list()
+
 class KnowledgeGraph:
     entailment = 0
     missing_verb = 1
@@ -24,54 +31,29 @@ class KnowledgeGraph:
     invalid_simplification = 6
     # invalid simplification: a subject, verb pair and a verb, object pair is
     # collapsed to a subject, verb, object tuple, but that tuple is unattested.
+    entailment_bert = 7
+    # entailed, but requiring bert support, which is sometimes shaky.
 
-    def __init__(self, nlp, use_bert=False, verbose=False):
+    def __init__(self, nlp, equivalencies=list(), use_bert=False, verbose=False):
         self.nlp = nlp
-        self.verbose = verbose
         self.use_bert = use_bert
+        self.verbose = verbose
+        self.equivalencies = equivalencies
         self.relations = list()
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
 
-    def get_actors(self, verb):
-        actors = []
-        for child in verb.children:
-            if child.dep_ == "nsubj":
-                actors.append(child)
-            elif child.dep_ == "agent":
-                # passive, look for true actor
-                for grandchild in child.children:
-                    if grandchild.dep_ == "pobj":
-                        actors.append(grandchild)
-        if verb.dep_ == "acl":
-            if verb.text[-3:] == "ing":
-                actors.append(verb.head)
-        return actors
-
-    def get_acteds(self, verb):
-        acteds = []
-        for child in verb.children:
-            if child.dep_ == "dobj" or child.dep_ == "nsubjpass":
-                acteds.append(child)
-        if verb.dep_ == "acl":
-            if verb.text[-3:] != "ing":
-                acteds.append(verb.head)
-        return acteds
-
     def get_relation(self, verb):
-        actors = self.get_actors(verb)
-        acteds = self.get_acteds(verb)
+        actors = util.get_actors(verb)
+        acteds = util.get_acteds(verb)
         return verb, actors, acteds
 
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
-    def is_generic(self, token):
-        return token.pos_ == "PRON" or token.pos_ == "DET"
-
-    def get_valid_cluster_tokens(self, noun, use_generic=False):
+    def get_sub_cluster(self, noun, use_generic=False):
         tokens = list()
-        if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
+        if util.is_generic(noun) and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
             if self.verbose:
@@ -80,23 +62,30 @@ class KnowledgeGraph:
         for cluster in noun._.coref_clusters:
             for span in cluster:
                 for token in span:
-                    if use_generic or not self.is_generic(token):
-                        if self.verbose and self.is_generic(token):
+                    if use_generic or not util.is_generic(token):
+                        if self.verbose and util.is_generic(token):
                             print(colored("warning:", "yellow"), "using generic token", noun)
                         tokens.append(token)
         if len(tokens) == 0:
-            if use_generic or not self.is_generic(noun):
-                if self.verbose and self.is_generic(noun):
+            if use_generic or not util.is_generic(noun):
+                if self.verbose and util.is_generic(noun):
                     print(colored("warning:", "yellow"), "using generic token", noun)
                 tokens.append(noun)
         return tokens 
 
+    def get_cluster(self, noun, use_generic=False):
+        cluster = self.get_sub_cluster(noun, use_generic)
+        for equivalency in self.equivalencies:
+            for token in equivalency(noun):
+                cluster.extend(self.get_sub_cluster(token, use_generic))
+        return cluster
+
     def noun_similarity(self, n1, n2):
-        tokens1 = self.get_valid_cluster_tokens(n1)
-        tokens2 = self.get_valid_cluster_tokens(n2)
+        tokens1 = self.get_cluster(n1)
+        tokens2 = self.get_cluster(n2)
         if len(tokens1) == 0 or len(tokens2) == 0:
-            tokens1 = self.get_valid_cluster_tokens(n1, True)
-            tokens2 = self.get_valid_cluster_tokens(n2, True)
+            tokens1 = self.get_cluster(n1, True)
+            tokens2 = self.get_cluster(n2, True)
         maximum_similarity = 0
         maximum_pair = None
         for token1 in tokens1:
@@ -195,7 +184,7 @@ class KnowledgeGraph:
                 premise_minimal = util.build_minimal_sentence(premise)
                 logits = bert_nli_classification(premise_minimal, hypothesis_minimal)
                 if logits.argmax() == 1:
-                    return KnowledgeGraph.entailment, [(premise, r[1], logits)]
+                    return KnowledgeGraph.entailment_bert, [(premise, r[1], logits)]
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:
