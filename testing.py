@@ -44,15 +44,15 @@ def test(nlp, src, gen, bert=False, verbose=False):
             r = kg.query_relation(relation)
             if r[0] == KnowledgeGraph.entailment:
                 if verbose:
-                    print("contained |", relation, "|", r[1])
+                    print(colored("contained", "blue"), "|", relation, "|", r[1])
                 contained += 1
             if r[0] == KnowledgeGraph.entailment_bert:
                 if verbose:
-                    print("contained (bert) |", relation, "|", r[1])
+                    print(colored("contained (BERT)", "blue"), "|", relation, "|", r[1])
                 contained_bert += 1
             if r[0] == KnowledgeGraph.contradiction_bert:
                 if verbose:
-                    print("contradiction (bert) |", relation, "|", r[1])
+                    print(colored("contradiction (BERT)", "red"), "|", relation, "|", r[1])
                 contradiction_bert += 1
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing += 1
