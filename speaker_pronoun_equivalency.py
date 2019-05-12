@@ -1,5 +1,6 @@
 from knowledge_graph import TokenEquivalency
 from speaker_labeler import SpeakerLabeler
+from util import is_first_person_pronoun
 
 class SpeakerPronounEquivalency(TokenEquivalency):
     def __init__(self, verbose=False):
@@ -8,4 +9,6 @@ class SpeakerPronounEquivalency(TokenEquivalency):
     def register(self, doc):
         self.sl[doc] = SpeakerLabeler(doc)
     def __call__(self, token):
-        return self.sl[token.doc].speaker(token)
+        if is_first_person_pronoun(token):
+            return self.sl[token.doc].speaker(token)
+        return list()

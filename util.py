@@ -34,6 +34,9 @@ def clean(s):
 def is_generic(token):
     return token.pos_ == "PRON" or token.pos_ == "DET"
 
+def is_first_person_pronoun(token):
+    return token.text in ["i", "me", "we", "us"]
+
 def get_conj(noun):
     stack = [noun]
     conj_list = [noun]
