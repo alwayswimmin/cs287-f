@@ -24,7 +24,8 @@ class SpeakerLabeler:
                 # if this token is in a quote, it is a ccomp, and its head is
                 # not in a quote, then we expect its head to be a verb to which
                 # the actor(s) is the speaker.
-                if doc[i].dep_ == "ccomp" and self.quote_begin[doc[i].head.i] == -1:
+                if doc[i].dep_ == "ccomp" and \
+                        self.quote_begin[doc[i].head.i] == -1:
                     self.quote_actor[qb].extend(util.get_actors(doc[i].head))
                 i += 1
             if use_last and len(self.quote_actor[qb]) == 0:
