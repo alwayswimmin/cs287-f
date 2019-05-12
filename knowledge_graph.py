@@ -37,7 +37,8 @@ class KnowledgeGraph:
     # verb contradiction: (A, V, B) is compared against (A, V2, B) in the
     # source document, but V2 and V are deemed to be contradictory by BERT
 
-    def __init__(self, nlp, equivalencies=list(), use_bert=False, verbose=False):
+    def __init__(self, nlp, equivalencies=list(), use_bert=False,
+                 verbose=False):
         self.nlp = nlp
         self.use_bert = use_bert
         self.verbose = verbose
@@ -60,19 +61,22 @@ class KnowledgeGraph:
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
             if self.verbose:
-                print("found relative clause, replacing", noun, "with", noun.head.head)
+                print("found relative clause, replacing", noun, "with", 
+                        noun.head.head)
             noun = noun.head.head
         for cluster in noun._.coref_clusters:
             for span in cluster:
                 for token in span:
                     if use_generic or not util.is_generic(token):
                         if self.verbose and util.is_generic(token):
-                            print(colored("warning:", "yellow"), "using generic token", noun)
+                            print(colored("warning:", "yellow"), 
+                                    "using generic token", noun)
                         tokens.append(token)
         if len(tokens) == 0:
             if use_generic or not util.is_generic(noun):
                 if self.verbose and util.is_generic(noun):
-                    print(colored("warning:", "yellow"), "using generic token", noun)
+                    print(colored("warning:", "yellow"), 
+                            "using generic token", noun)
                 tokens.append(noun)
         return tokens 
 
@@ -98,8 +102,10 @@ class KnowledgeGraph:
                     maximum_similarity = token_similarity
                     maximum_pair = token1, token2
         if maximum_similarity > self.noun_threshold:
-            return maximum_similarity, ("best match:", maximum_similarity, maximum_pair)
-        return maximum_similarity, ("best match:", maximum_similarity, maximum_pair)
+            return maximum_similarity, ("best match:", maximum_similarity,
+                    maximum_pair)
+        return maximum_similarity, ("best match:", maximum_similarity,
+                maximum_pair)
 
     def noun_intersect_setminus(self, supset, subset):
         contained_nouns = []
@@ -127,7 +133,8 @@ class KnowledgeGraph:
     # returns (result, proof)
     def implied_relation(self, premise, hypothesis, ignore_verb_dissimilarity=False):
         verb_similarity = self.verb_similarity(premise[0], hypothesis[0])
-        if not ignore_verb_dissimilarity and verb_similarity < self.verb_threshold:
+        if not ignore_verb_dissimilarity and \
+                verb_similarity < self.verb_threshold:
             return self.missing_verb, ("verb similarity:", verb_similarity,
                     "missing verb", hypothesis)
         actor_actor = self.noun_intersect_setminus(premise[1], hypothesis[1])
@@ -139,10 +146,11 @@ class KnowledgeGraph:
         missing_acteds = acted_acted[1]
         contradiction_deps = actor_acted[0] + acted_actor[0]
         if len(missing_actors) == 0 and len(missing_acteds) == 0:
-            return KnowledgeGraph.entailment, ("verb similarity:", verb_similarity,
-                    "contained dependences:", contained_deps)
+            return KnowledgeGraph.entailment, ("verb similarity:",
+                    verb_similarity, "contained dependences:", contained_deps)
         if len(contradiction_deps) > 0:
-            return KnowledgeGraph.contradiction, ("verb similarity:", verb_similarity,
+            return KnowledgeGraph.contradiction, ("verb similarity:",
+                    verb_similarity,
                     "contradictory dependences:", contradiction_deps)
         if len(missing_actors) == 0:
             return KnowledgeGraph.missing_acteds, ("verb similarity:",
@@ -178,7 +186,8 @@ class KnowledgeGraph:
                 if r[1][1] > best_verb_similarity:
                     closest_verb_premise = premise
                     best_verb_similarity = r[1][1]
-            r = self.implied_relation(premise, hypothesis, ignore_verb_dissimilarity=True)
+            r = self.implied_relation(premise, hypothesis,
+                                      ignore_verb_dissimilarity=True)
             if r[0] == KnowledgeGraph.entailment:
                 entailed_without_verb.append((premise, r[1]))
         if len(entailed_without_verb) > 0 and self.use_bert:
@@ -186,9 +195,11 @@ class KnowledgeGraph:
             contradiction_bert = None
             for premise, proof in entailed_without_verb:
                 premise_minimal = util.build_minimal_sentence(premise)
-                logits = bert_nli_classification(premise_minimal, hypothesis_minimal)
+                logits = bert_nli_classification(premise_minimal,
+                                                 hypothesis_minimal)
                 if logits.argmax() == 1: # entailment
-                    return KnowledgeGraph.entailment_bert, [(premise, r[1], logits)]
+                    return KnowledgeGraph.entailment_bert, \
+                            [(premise, r[1], logits)]
                 if logits.argmax() == 0: # contradiction
                     contradiction_bert = [(premise, r[1], logits)]
             if contradiction_bert is not None:
@@ -197,10 +208,11 @@ class KnowledgeGraph:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:
             return KnowledgeGraph.missing_verb, entailed_without_verb
-        if len(missing_actors) > 0 or len(missing_acteds) > 0:
+        if len(hypothesis[1]) > 0 and len(hypothesis[2]) > 0 \
+                and (len(missing_actors) > 0 or len(missing_acteds) > 0):
             return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
-        # uncomment this to return the closest verb in the event that no actual
-        # verb to which we can compare is found.
+        # uncomment this to instead return the closest verb in the event that
+        # no actual verb to which we can compare is found.
         # if len(missing_deps) > 0:
         #     return KnowledgeGraph.missing_dependencies, missing_deps
         # return KnowledgeGraph.missing_verb, [(closest_verb_premise, r[1])]

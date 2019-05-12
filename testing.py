@@ -23,7 +23,8 @@ def test(nlp, src, gen, bert=False, verbose=False):
     spe = SpeakerPronounEquivalency()
     spe.register(src)
     spe.register(gen)
-    kg = KnowledgeGraph(nlp, use_bert=bert, equivalencies=[spe], verbose=verbose)
+    kg = KnowledgeGraph(nlp, use_bert=bert, equivalencies=[spe],
+                        verbose=verbose)
     if verbose:
         annotator = Annotator(src, gen)
     for token in src:
@@ -44,24 +45,29 @@ def test(nlp, src, gen, bert=False, verbose=False):
             r = kg.query_relation(relation)
             if r[0] == KnowledgeGraph.entailment:
                 if verbose:
-                    print(colored("contained", "blue"), "|", relation, "|", r[1])
+                    print(colored("contained", "blue"), "|", 
+                            relation, "|", r[1])
                 contained += 1
             if r[0] == KnowledgeGraph.entailment_bert:
                 if verbose:
-                    print(colored("contained (BERT)", "blue"), "|", relation, "|", r[1])
+                    print(colored("contained (BERT)", "blue"), "|", 
+                            relation, "|", r[1])
                 contained_bert += 1
             if r[0] == KnowledgeGraph.contradiction_bert:
                 if verbose:
-                    print(colored("contradiction (BERT)", "red"), "|", relation, "|", r[1])
+                    print(colored("contradiction (BERT)", "red"), "|", 
+                            relation, "|", r[1])
                 contradiction_bert += 1
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing += 1
                 if verbose:
-                    print(colored("generic missing dependency", "yellow"), "|", relation, "|", r[1])
+                    print(colored("generic missing dependency", "yellow"), "|",
+                            relation, "|", r[1])
             elif r[0] == KnowledgeGraph.missing_verb:
                 missing_verb += 1
                 if verbose:
-                    print(colored("missing verb", "yellow"), "|", relation, "|", r[1])
+                    print(colored("missing verb", "yellow"), "|", relation,
+                            "|", r[1])
             elif r[0] == KnowledgeGraph.invalid_simplification:
                 invalid_simplification += 1
                 if verbose:
@@ -70,7 +76,8 @@ def test(nlp, src, gen, bert=False, verbose=False):
             elif r[0] == KnowledgeGraph.contradiction:
                 contradiction += 1
                 if verbose:
-                    print(colored("contradiction", "red"), "|", relation, "|", r[1])
+                    print(colored("contradiction", "red"), "|", relation, "|",
+                            r[1])
             if verbose:
                 annotator.annotate(relation, r)
     if verbose:
@@ -79,19 +86,28 @@ def test(nlp, src, gen, bert=False, verbose=False):
         print("Summary:", " ".join(annotated_summary))
     if total == 0:
         return 0.0, 0.0, 0.0, 0.0, 0.0
-    return 100.0 * contained / total, 100.0 * contained_bert / total, 100.0 * missing / total, 100.0 * missing_verb / total, 100.0 * contradiction / total, 100.0 * contradiction_bert / total, 100.0 * invalid_simplification / total
+    return 100.0 * contained / total, 100.0 * contained_bert / total, \
+            100.0 * missing / total, 100.0 * missing_verb / total, \
+            100.0 * contradiction / total, \
+            100.0 * contradiction_bert / total, \
+            100.0 * invalid_simplification / total
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze Summary Outputs.')
-    parser.add_argument('--document', dest='document', metavar='d', type=str, 
-            default='data/bottom-up/test.txt.src.tagged.shuf.400words', help='source document path (default: bottom-up)')
-    parser.add_argument('--summary', dest='summary', metavar='s', type=str, 
-            default='data/bottom-up/bottom_up_cnndm_015_threshold.out', help='generated summary path (default: bottom-up)')
-    parser.add_argument('--reference', dest='reference', metavar='r', type=str, 
-            default='data/bottom-up/test.txt.tgt.tagged.shuf.noslash', help='reference summary path (default: bottom-up)')
-    parser.add_argument('--cache-dir', dest='cache_dir', metavar='c', type=str, 
-            default='', help="directory for cached numpy entries (default: don't cache)")
-    parser.add_argument('--indices', dest='indices', metavar='i', type=int, nargs='*',
+    parser.add_argument('--document', dest='document', metavar='d', type=str,
+            default='data/bottom-up/test.txt.src.tagged.shuf.400words',
+            help='source document path (default: bottom-up)')
+    parser.add_argument('--summary', dest='summary', metavar='s', type=str,
+            default='data/bottom-up/bottom_up_cnndm_015_threshold.out',
+            help='generated summary path (default: bottom-up)')
+    parser.add_argument('--reference', dest='reference', metavar='r', type=str,
+            default='data/bottom-up/test.txt.tgt.tagged.shuf.noslash',
+            help='reference summary path (default: bottom-up)')
+    parser.add_argument('--cache-dir', dest='cache_dir', metavar='c', type=str,
+            default='', 
+            help="directory for cached numpy entries (default: don't cache)")
+    parser.add_argument('--indices', dest='indices', metavar='i', type=int,
+            nargs='*',
             default=[], help='indices to test (default: everything)')
     parser.add_argument('--language-model', dest='lm', metavar='m', type=str,
                         default='en_core_web_lg',
@@ -110,13 +126,15 @@ if __name__ == "__main__":
                         help='calculate copy lengths (default: False)')
     parser.add_argument('--copy-only', dest='copy_only', action='store_const',
                         const=True, default=False,
-                        help='calculate average copy length only. Implies copy (default: False)')
+                        help='calculate average copy length only. '
+                        'Implies copy (default: False)')
     parser.add_argument('--rouge', dest='rouge', action='store_const',
                         const=True, default=False,
                         help='calculate ROUGE scores (default: False)')
     parser.add_argument('--bert', dest='bert', action='store_const',
                         const=True, default=False,
-                        help='use BERT to resolve cases where only the verb disagrees (default: False)')
+                        help='use BERT to resolve cases where only the verb'
+                        'disagrees (default: False)')
 
     args = parser.parse_args()
     document = args.document
@@ -153,7 +171,8 @@ if __name__ == "__main__":
     with open(document) as src:
         with open(summary) as gen:
             with open(reference) as tgt:
-                for i, (src_line, gen_line, tgt_line) in enumerate(zip(src, gen, tgt)):
+                for i, (src_line, gen_line, tgt_line) in \
+                        enumerate(zip(src, gen, tgt)):
                     if len(indices) > 0 and i not in indices:
                         continue
                     src_line = util.clean(src_line)
@@ -163,22 +182,28 @@ if __name__ == "__main__":
                     if print_scores:
                         print(i)
                     if not copy_only:
-                        score = test(nlp, src_line, gen_line, bert=bert, verbose=verbose)
-                        contained, contained_bert, missing, missing_verb, contradiction, contradiction_bert, invalid_simplification = score
+                        score = test(nlp, src_line, gen_line, bert=bert,
+                                     verbose=verbose)
+                        contained, contained_bert, missing, missing_verb, \
+                                contradiction, contradiction_bert, \
+                                invalid_simplification = score
                         contained_scores.append(contained)
                         contained_bert_scores.append(contained_bert)
                         missing_scores.append(missing)
                         missing_verb_scores.append(missing_verb)
                         contradiction_scores.append(contradiction)
                         contradiction_bert_scores.append(contradiction_bert)
-                        invalid_simplification_scores.append(invalid_simplification)
+                        invalid_simplification_scores.append(
+                                invalid_simplification)
                         if print_scores:
                             print("score:", score, end = "\t")
                     if copy:
-                        average_copy_length = util.average_copy_length(src_line, gen_line)
+                        average_copy_length = util.average_copy_length(
+                                src_line, gen_line)
                         average_copy_lengths.append(average_copy_length)
                         if print_scores:
-                            print("average copy length:", average_copy_length, end = "\t")
+                            print("average copy length:", average_copy_length,
+                                    end = "\t")
                     if rouge:
                         rouge_score = r.get_scores(gen_line, tgt_line)
                         rouge_scores += rouge_score
@@ -189,18 +214,26 @@ if __name__ == "__main__":
 
                     if cache_dir and (i+1) % 500 == 0:
                         if not copy_only:
-                            np.save(cache_dir + "scores" + str(i+1), contained_scores)
-                            np.save(cache_dir + "contained_bert_scores" + str(i+1), contained_bert_scores)
-                            np.save(cache_dir + "missing_scores" + str(i+1), missing_scores)
-                            np.save(cache_dir + "missing_verb_scores" + str(i+1), missing_verb_scores)
-                            np.save(cache_dir + "contradiction_scores" + str(i+1), contradiction_scores)
-                            np.save(cache_dir + "contradiction_bert_scores" + str(i+1), contradiction_bert_scores)
-                            np.save(cache_dir + "invalid_simplification_scores" + str(i+1),
-                                    invalid_simplification_scores)
+                            np.save(cache_dir + "scores" + str(i+1),
+                                    contained_scores)
+                            np.save(cache_dir + "contained_bert_scores" +
+                                    str(i+1), contained_bert_scores)
+                            np.save(cache_dir + "missing_scores" + str(i+1),
+                                    missing_scores)
+                            np.save(cache_dir + "missing_verb_scores" +
+                                    str(i+1), missing_verb_scores)
+                            np.save(cache_dir + "contradiction_scores" +
+                                    str(i+1), contradiction_scores)
+                            np.save(cache_dir + "contradiction_bert_scores" +
+                                    str(i+1), contradiction_bert_scores)
+                            np.save(cache_dir + "invalid_simplification_scores"
+                                    + str(i+1), invalid_simplification_scores)
                         if copy:
-                            np.save(cache_dir + "average_copy_lengths" + str(i+1), average_copy_lengths)
+                            np.save(cache_dir + "average_copy_lengths" +
+                                    str(i+1), average_copy_lengths)
                         if rouge:
-                            np.save(cache_dir + "rouge" + str(i+1), rouge_scores)
+                            np.save(cache_dir + "rouge" + str(i+1),
+                                    rouge_scores)
                     
 
 
@@ -209,7 +242,10 @@ if __name__ == "__main__":
             np.save(cache_dir + "scores", contained_scores)
             np.save(cache_dir + "contained_bert_scores", contained_bert_scores)
             np.save(cache_dir + "missing_scores", missing_scores)
+            np.save(cache_dir + "missing_verb_scores", missing_verb_scores)
             np.save(cache_dir + "contradiction_scores", contradiction_scores)
+            np.save(cache_dir + "contradiction_bert_scores",
+                    contradiction_bert_scores)
             np.save(cache_dir + "invalid_simplification_scores",
                     invalid_simplification_scores)
         if copy:
