@@ -55,6 +55,11 @@ class KnowledgeGraph:
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
+    def add_document(self, doc):
+        for token in doc:
+            if token.pos_ == "VERB":
+                self.add_verb(token)
+
     def get_sub_cluster(self, noun, use_generic=False):
         tokens = list()
         if util.is_generic(noun) and noun.head.dep_ == 'relcl':
@@ -131,7 +136,8 @@ class KnowledgeGraph:
         return verb_similarity
 
     # returns (result, proof)
-    def implied_relation(self, premise, hypothesis, ignore_verb_dissimilarity=False):
+    def implied_relation(self, premise, hypothesis,
+                         ignore_verb_dissimilarity=False):
         verb_similarity = self.verb_similarity(premise[0], hypothesis[0])
         if not ignore_verb_dissimilarity and \
                 verb_similarity < self.verb_threshold:
@@ -191,12 +197,12 @@ class KnowledgeGraph:
             if r[0] == KnowledgeGraph.entailment:
                 entailed_without_verb.append((premise, r[1]))
         if len(entailed_without_verb) > 0 and self.use_bert:
-            hypothesis_minimal = util.build_minimal_sentence(hypothesis)
+            hypothesis_sent = util.get_containing_sentence(hypothesis[0])
             contradiction_bert = None
             for premise, proof in entailed_without_verb:
-                premise_minimal = util.build_minimal_sentence(premise)
-                logits = bert_nli_classification(premise_minimal,
-                                                 hypothesis_minimal)
+                premise_sent = util.get_containing_sentence(premise[0])
+                logits = bert_nli_classification(premise_sent,
+                                                 hypothesis_sent)
                 if logits.argmax() == 1: # entailment
                     return KnowledgeGraph.entailment_bert, \
                             [(premise, r[1], logits)]
@@ -208,9 +214,13 @@ class KnowledgeGraph:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:
             return KnowledgeGraph.missing_verb, entailed_without_verb
-        if len(hypothesis[1]) > 0 and len(hypothesis[2]) > 0 \
-                and (len(missing_actors) > 0 or len(missing_acteds) > 0):
-            return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
+        if len(missing_actors) > 0 and len(missing_acteds) > 0:
+            return KnowledgeGraph.invalid_simplification, \
+                    missing_actors + missing_acteds
+        if len(missing_actors) > 0:
+            return KnowledgeGraph.missing_actors, missing_actors
+        if len(missing_acteds) > 0:
+            return KnowledgeGraph.missing_acteds, missing_acteds
         # uncomment this to instead return the closest verb in the event that
         # no actual verb to which we can compare is found.
         # if len(missing_deps) > 0:
