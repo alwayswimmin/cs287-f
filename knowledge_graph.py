@@ -22,8 +22,8 @@ class KnowledgeGraph:
     missing_dependencies = 2
     # generic missing dependency fallback
     contradiction = 3
-    # contradiction: a noun is claimed to be the subject when it is really the
-    # object, or vice versa.
+    # a contradiction in grammar: a noun is claimed to be the subject when it
+    # is really the object, or vice versa.
     missing_actors = 4
     # actors are missing, but all acteds are found
     missing_acteds = 5
@@ -32,7 +32,10 @@ class KnowledgeGraph:
     # invalid simplification: a subject, verb pair and a verb, object pair is
     # collapsed to a subject, verb, object tuple, but that tuple is unattested.
     entailment_bert = 7
-    # entailed, but requiring bert support, which is sometimes shaky.
+    # entailed, but requiring BERT support, which is sometimes shaky.
+    contradiction_bert = 8
+    # verb contradiction: (A, V, B) is compared against (A, V2, B) in the
+    # source document, but V2 and V are deemed to be contradictory by BERT
 
     def __init__(self, nlp, equivalencies=list(), use_bert=False, verbose=False):
         self.nlp = nlp
@@ -180,11 +183,16 @@ class KnowledgeGraph:
                 entailed_without_verb.append((premise, r[1]))
         if len(entailed_without_verb) > 0 and self.use_bert:
             hypothesis_minimal = util.build_minimal_sentence(hypothesis)
+            contradiction_bert = None
             for premise, proof in entailed_without_verb:
                 premise_minimal = util.build_minimal_sentence(premise)
                 logits = bert_nli_classification(premise_minimal, hypothesis_minimal)
-                if logits.argmax() == 1:
+                if logits.argmax() == 1: # entailment
                     return KnowledgeGraph.entailment_bert, [(premise, r[1], logits)]
+                if logits.argmax() == 0: # contradiction
+                    contradiction_bert = [(premise, r[1], logits)]
+            if contradiction_bert is not None:
+                return KnowledgeGraph.contradiction_bert, contradiction_bert
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:
