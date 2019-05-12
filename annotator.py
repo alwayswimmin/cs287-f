@@ -10,6 +10,7 @@ class Annotator:
     entailment_bert = 2 << KnowledgeGraph.entailment_bert
     contradiction = 2 << KnowledgeGraph.contradiction
     invalid_simplification = 2 << KnowledgeGraph.invalid_simplification
+    contradiction_bert = 2 << KnowledgeGraph.contradiction_bert
 
     def __init__(self, document, summary):
         self.document = document
@@ -51,16 +52,18 @@ class Annotator:
     def get_color(self, annotation):
         if annotation & Annotator.contradiction:
             return 'red'
-        if annotation & Annotator.entailment:
-            return 'blue'
-        if annotation & Annotator.entailment_bert:
-            return 'blue'
+        if annotation & Annotator.contradiction_bert:
+            return 'red'
         if annotation & Annotator.invalid_simplification:
             return 'magenta'
         if annotation & Annotator.missing_dependencies:
             return 'yellow'
         if annotation & Annotator.missing_verb:
             return 'yellow'
+        if annotation & Annotator.entailment:
+            return 'blue'
+        if annotation & Annotator.entailment_bert:
+            return 'blue'
         return None
     
     def get_highlight(self, annotation):
