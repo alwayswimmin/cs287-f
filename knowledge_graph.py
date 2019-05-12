@@ -209,7 +209,7 @@ class KnowledgeGraph:
         if len(entailed_without_verb) > 0:
             return KnowledgeGraph.missing_verb, entailed_without_verb
         if len(hypothesis[1]) > 0 and len(hypothesis[2]) > 0 \
-                and (len(missing_actors) > 0 or len(missing_acteds) > 0):
+                and len(missing_actors) > 0 and len(missing_acteds) > 0:
             return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
         # uncomment this to instead return the closest verb in the event that
         # no actual verb to which we can compare is found.
