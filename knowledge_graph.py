@@ -214,16 +214,19 @@ class KnowledgeGraph:
             return KnowledgeGraph.contradiction, contradiction_deps
         if len(entailed_without_verb) > 0:
             return KnowledgeGraph.missing_verb, entailed_without_verb
-        if len(hypothesis[1]) > 0 and len(hypothesis[2]) > 0 \
-                and len(missing_actors) > 0 and len(missing_acteds) > 0:
-            return KnowledgeGraph.invalid_simplification, missing_actors + missing_acteds
+        if len(missing_actors) > 0 and len(missing_acteds) > 0:
+            return KnowledgeGraph.invalid_simplification, \
+                    missing_actors + missing_acteds
+        if len(missing_actors) > 0:
+            return KnowledgeGraph.missing_actors, missing_actors
+        if len(missing_acteds) > 0:
+            return KnowledgeGraph.missing_acteds, missing_acteds
         # uncomment this to instead return the closest verb in the event that
         # no actual verb to which we can compare is found.
         # if len(missing_deps) > 0:
         #     return KnowledgeGraph.missing_dependencies, missing_deps
         # return KnowledgeGraph.missing_verb, [(closest_verb_premise, r[1])]
-        return KnowledgeGraph.missing_dependencies, missing_deps + \
-                missing_actors + missing_acteds
+        return KnowledgeGraph.missing_dependencies, missing_deps
 
     # returns (result, proof)
     def query_verb(self, verb):

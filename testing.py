@@ -32,6 +32,8 @@ def test(nlp, src, gen, bert=False, verbose=False):
     contained_bert = 0
     missing = 0
     missing_verb = 0
+    missing_actors = 0
+    missing_acteds = 0
     contradiction = 0
     contradiction_bert = 0
     invalid_simplification = 0
@@ -61,6 +63,16 @@ def test(nlp, src, gen, bert=False, verbose=False):
                 if verbose:
                     print(colored("generic missing dependency", "yellow"), "|",
                             relation, "|", r[1])
+            elif r[0] == KnowledgeGraph.missing_actors:
+                missing_actors += 1
+                if verbose:
+                    print(colored("missing actors", "yellow"), "|", relation,
+                            "|", r[1])
+            elif r[0] == KnowledgeGraph.missing_acteds:
+                missing_acteds += 1
+                if verbose:
+                    print(colored("missing acteds", "yellow"), "|", relation,
+                            "|", r[1])
             elif r[0] == KnowledgeGraph.missing_verb:
                 missing_verb += 1
                 if verbose:
@@ -86,6 +98,7 @@ def test(nlp, src, gen, bert=False, verbose=False):
         return 0.0, 0.0, 0.0, 0.0, 0.0
     return 100.0 * contained / total, 100.0 * contained_bert / total, \
             100.0 * missing / total, 100.0 * missing_verb / total, \
+            100.0 * missing_actors / total, 100.0 * missing_acteds / total, \
             100.0 * contradiction / total, \
             100.0 * contradiction_bert / total, \
             100.0 * invalid_simplification / total
@@ -160,6 +173,8 @@ if __name__ == "__main__":
     contained_bert_scores = []
     missing_scores = []
     missing_verb_scores = []
+    missing_actors_scores = []
+    missing_acteds_scores = []
     contradiction_scores = []
     contradiction_bert_scores = []
     invalid_simplification_scores = []
@@ -183,12 +198,15 @@ if __name__ == "__main__":
                         score = test(nlp, src_line, gen_line, bert=bert,
                                      verbose=verbose)
                         contained, contained_bert, missing, missing_verb, \
+                                missing_actors, missing_acteds, \
                                 contradiction, contradiction_bert, \
                                 invalid_simplification = score
                         contained_scores.append(contained)
                         contained_bert_scores.append(contained_bert)
                         missing_scores.append(missing)
                         missing_verb_scores.append(missing_verb)
+                        missing_actors_scores.append(missing_actors)
+                        missing_acteds_scores.append(missing_acteds)
                         contradiction_scores.append(contradiction)
                         contradiction_bert_scores.append(contradiction_bert)
                         invalid_simplification_scores.append(
@@ -220,6 +238,10 @@ if __name__ == "__main__":
                                     missing_scores)
                             np.save(cache_dir + "missing_verb_scores" +
                                     str(i+1), missing_verb_scores)
+                            np.save(cache_dir + "missing_actors_scores" +
+                                    str(i+1), missing_actors_scores)
+                            np.save(cache_dir + "missing_acteds_scores" +
+                                    str(i+1), missing_acteds_scores)
                             np.save(cache_dir + "contradiction_scores" +
                                     str(i+1), contradiction_scores)
                             np.save(cache_dir + "contradiction_bert_scores" +
@@ -241,6 +263,8 @@ if __name__ == "__main__":
             np.save(cache_dir + "contained_bert_scores", contained_bert_scores)
             np.save(cache_dir + "missing_scores", missing_scores)
             np.save(cache_dir + "missing_verb_scores", missing_verb_scores)
+            np.save(cache_dir + "missing_actors_scores", missing_actors_scores)
+            np.save(cache_dir + "missing_acteds_scores", missing_acteds_scores)
             np.save(cache_dir + "contradiction_scores", contradiction_scores)
             np.save(cache_dir + "contradiction_bert_scores",
                     contradiction_bert_scores)
