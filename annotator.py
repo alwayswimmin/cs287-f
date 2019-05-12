@@ -17,7 +17,8 @@ class Annotator:
     def __init__(self, document, summary):
         self.document = document
         self.summary = summary
-        self.document_annotations, self.summary_annotations = util.copy_annotations(self.document, self.summary)
+        self.document_annotations, self.summary_annotations = \
+                util.copy_annotations(self.document, self.summary)
         for i in range(len(self.document_annotations)):
             if self.document_annotations[i]:
                 self.document_annotations[i] = Annotator.copied_word
@@ -39,9 +40,10 @@ class Annotator:
             self.summary_annotations[actor.i] |= color
         for acted in acteds:
             self.summary_annotations[acted.i] |= color
+        if query_result[0] == KnowledgeGraph.missing_dependencies:
+            return
         for proof in query_result[1]:
             relation = proof[0]
-            print(relation)
             verb = relation[0]
             actors = relation[1]
             acteds = relation[2]
