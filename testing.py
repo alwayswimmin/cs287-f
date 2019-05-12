@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from termcolor import colored
 from knowledge_graph import KnowledgeGraph
 from annotator import Annotator
+from speaker_pronoun_equivalency import SpeakerPronounEquivalency
 import util
 from rouge import Rouge
 
@@ -18,8 +19,11 @@ def test(nlp, src, gen, bert=False, verbose=False):
     src = nlp(src)
     gen = nlp(gen)
     if verbose:
-        print("clusters:", src._.coref_clusters)
-    kg = KnowledgeGraph(nlp, use_bert=bert, verbose=verbose)
+        print("clusters:", src._.coref_clusters, gen._.coref_clusters)
+    spe = SpeakerPronounEquivalency()
+    spe.register(src)
+    spe.register(gen)
+    kg = KnowledgeGraph(nlp, use_bert=bert, equivalencies=[spe], verbose=verbose)
     if verbose:
         annotator = Annotator(src, gen)
     for token in src:

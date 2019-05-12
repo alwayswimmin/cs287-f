@@ -31,6 +31,9 @@ def clean(s):
         
     return ' '.join(s2)
 
+def is_generic(token):
+    return token.pos_ == "PRON" or token.pos_ == "DET"
+
 def get_conj(noun):
     stack = [noun]
     conj_list = [noun]

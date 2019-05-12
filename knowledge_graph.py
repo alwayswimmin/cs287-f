@@ -8,6 +8,13 @@ from BERT.nli_classification import bert_nli_classification
 import warnings
 warnings.filterwarnings("ignore")
 
+class TokenEquivalency:
+    def __init__(self, verbose=False):
+        self.verbose = verbose
+    # return a list of tokens considered equivalent
+    def __call__(self, token):
+        return list()
+
 class KnowledgeGraph:
     entailment = 0
     missing_verb = 1
@@ -27,10 +34,11 @@ class KnowledgeGraph:
     entailment_bert = 7
     # entailed, but requiring bert support, which is sometimes shaky.
 
-    def __init__(self, nlp, use_bert=False, verbose=False):
+    def __init__(self, nlp, equivalencies=list(), use_bert=False, verbose=False):
         self.nlp = nlp
-        self.verbose = verbose
         self.use_bert = use_bert
+        self.verbose = verbose
+        self.equivalencies = equivalencies
         self.relations = list()
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
@@ -43,12 +51,9 @@ class KnowledgeGraph:
     def add_verb(self, verb):
         self.relations.append(self.get_relation(verb))
 
-    def is_generic(self, token):
-        return token.pos_ == "PRON" or token.pos_ == "DET"
-
-    def get_valid_cluster_tokens(self, noun, use_generic=False):
+    def get_sub_cluster(self, noun, use_generic=False):
         tokens = list()
-        if (noun.pos_ == 'PRON' or noun.pos_ == 'DET') and noun.head.dep_ == 'relcl':
+        if util.is_generic(noun) and noun.head.dep_ == 'relcl':
             # the head is the verb of the relative clause
             # the head of the verb should be the noun this thing refers to
             if self.verbose:
@@ -57,23 +62,30 @@ class KnowledgeGraph:
         for cluster in noun._.coref_clusters:
             for span in cluster:
                 for token in span:
-                    if use_generic or not self.is_generic(token):
-                        if self.verbose and self.is_generic(token):
+                    if use_generic or not util.is_generic(token):
+                        if self.verbose and util.is_generic(token):
                             print(colored("warning:", "yellow"), "using generic token", noun)
                         tokens.append(token)
         if len(tokens) == 0:
-            if use_generic or not self.is_generic(noun):
-                if self.verbose and self.is_generic(noun):
+            if use_generic or not util.is_generic(noun):
+                if self.verbose and util.is_generic(noun):
                     print(colored("warning:", "yellow"), "using generic token", noun)
                 tokens.append(noun)
         return tokens 
 
+    def get_cluster(self, noun, use_generic=False):
+        cluster = self.get_sub_cluster(noun, use_generic)
+        for equivalency in self.equivalencies:
+            for token in equivalency(noun):
+                cluster.extend(self.get_sub_cluster(token, use_generic))
+        return cluster
+
     def noun_similarity(self, n1, n2):
-        tokens1 = self.get_valid_cluster_tokens(n1)
-        tokens2 = self.get_valid_cluster_tokens(n2)
+        tokens1 = self.get_cluster(n1)
+        tokens2 = self.get_cluster(n2)
         if len(tokens1) == 0 or len(tokens2) == 0:
-            tokens1 = self.get_valid_cluster_tokens(n1, True)
-            tokens2 = self.get_valid_cluster_tokens(n2, True)
+            tokens1 = self.get_cluster(n1, True)
+            tokens2 = self.get_cluster(n2, True)
         maximum_similarity = 0
         maximum_pair = None
         for token1 in tokens1:
