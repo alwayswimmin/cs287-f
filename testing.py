@@ -143,7 +143,7 @@ if __name__ == "__main__":
                     tgt_line = util.clean(tgt_line)
 
                     if print_scores:
-                        print(i, end = "\t")
+                        print(i)
                     if not copy_only:
                         score = test(nlp, src_line, gen_line, bert=bert, verbose=verbose)
                         contained, missing, contradiction, invalid_simplification = score
@@ -165,6 +165,18 @@ if __name__ == "__main__":
                         #     print("rouge:", rouge_score, end="\t")
                     if print_scores:
                         print()
+
+                    if cache_dir and i % 500 == 499:
+                        if not copy_only:
+                            np.save(cache_dir + "scores" + str(i), contained_scores)
+                            np.save(cache_dir + "missing_scores" + str(i), missing_scores)
+                            np.save(cache_dir + "contradiction_scores" + str(i), contradiction_scores)
+                            np.save(cache_dir + "invalid_simplification_scores" + str(i),
+                                    invalid_simplification_scores)
+                        if copy:
+                            np.save(cache_dir + "average_copy_lengths" + str(i), average_copy_lengths)
+                        if rouge:
+                            np.save(cache_dir + "rouge" + str(i), rouge_scores)
                     
 
 
