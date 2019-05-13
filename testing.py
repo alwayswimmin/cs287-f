@@ -101,7 +101,7 @@ def test(nlp, src, gen, bert=False, print_annotations=False, print_latex=False,
             100.0 * contained_bert / total, \
             100.0 * missing / total, \
             100.0 * missing_verb / total, \
-            100.0 * missing_actors / total, 
+            100.0 * missing_actors / total, \
             100.0 * missing_acteds / total, \
             100.0 * contradiction / total, \
             100.0 * contradiction_bert / total, \
