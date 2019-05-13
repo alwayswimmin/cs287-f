@@ -1,4 +1,5 @@
 import spacy
+from termcolor import colored
 
 def clean(s):
     s = s.split()
@@ -57,7 +58,7 @@ def get_actors(verb):
             # passive, look for true actor
             for grandchild in child.children:
                 if grandchild.dep_ == "pobj":
-                    actors.extend(get_conj(child))
+                    actors.extend(get_conj(grandchild))
     if verb.dep_ == "acl":
         if verb.text[-3:] == "ing":
             actors.append(verb.head)
@@ -73,6 +74,20 @@ def get_acteds(verb):
             acteds.append(verb.head)
     return acteds
 
+def get_acomps_attrs(verb):
+    acomps = []
+    for child in verb.children:
+        if child.dep_ == "acomp" or child.dep_ == "attr":
+            acomps.extend(get_conj(child))
+    return acomps
+
+def is_cluster_root(noun, cluster):
+    for span in cluster:
+        if noun == span.root:
+            return True
+    return False
+def get_cluster_roots(cluster):
+    return [span.root for span in cluster]
 
 def equivalent(w1, w2):
     if isinstance(w1, spacy.tokens.token.Token):
@@ -131,9 +146,37 @@ def average_copy_length(document, summary):
 def get_containing_sentence(verb):
     return " ".join(token.text for token in verb.sent)
 
+def in_forest(forest_roots, token):
+    for root in forest_roots:
+        if root.is_ancestor(token) or root == token:
+            return True
+    return False
+
+def get_containing_phrase(relation):
+    verb = relation[0]
+    actors = relation[1]
+    acteds = relation[2]
+    forest_roots = actors + [verb] + acteds
+    phrase = list()
+    for token in verb.sent:
+        if in_forest(forest_roots, token):
+            phrase.append(token.text)
+    return " ".join(phrase)
+
 def build_minimal_sentence(relation):
     verb = relation[0]
     actors = relation[1]
     acteds = relation[2]
     return " ".join([token.text for token in actors + [verb] + acteds])
 
+def format(word, color, highlight=None, latex=False):
+    if latex:
+        if highlight is not None:
+            highlight = highlight[3:]
+            if highlight == "grey":
+                highlight = "gray!30"
+            word = "\\hlc[%s]{%s}" % (highlight, word)
+        if color is not None:
+            word = "\\textbf{\\textcolor{%s}{%s}}" % (color, word)
+        return word
+    return colored(word, color, highlight)

@@ -15,6 +15,16 @@ class TokenEquivalency:
     def __call__(self, token):
         return list()
 
+class CompoundEquivalency(TokenEquivalency):
+    def __init__(self, verbose=False):
+        super(CompoundEquivalency, self).__init__(verbose=verbose)
+    def __call__(self, token):
+        equiv = list()
+        for child in token.children:
+            if child.dep_ == 'compound':
+                equiv.append(child)
+        return equiv
+
 class KnowledgeGraph:
     entailment = 0
     missing_verb = 1
@@ -38,18 +48,21 @@ class KnowledgeGraph:
     # source document, but V2 and V are deemed to be contradictory by BERT
 
     def __init__(self, nlp, equivalencies=list(), use_bert=False,
-                 verbose=False):
+                 use_acomps_attrs=True, verbose=False):
         self.nlp = nlp
         self.use_bert = use_bert
         self.verbose = verbose
         self.equivalencies = equivalencies
+        self.use_acomps_attrs = use_acomps_attrs
         self.relations = list()
         self.noun_threshold = 0.8
         self.verb_threshold = 0.9
 
     def get_relation(self, verb):
         actors = util.get_actors(verb)
-        acteds = util.get_acteds(verb)
+        acteds = util.get_acteds(verb) 
+        if self.use_acomps_attrs and verb.lemma_ == "be":
+            acteds.extend(util.get_acomps_attrs(verb))
         return verb, actors, acteds
 
     def add_verb(self, verb):
@@ -70,8 +83,10 @@ class KnowledgeGraph:
                         noun.head.head)
             noun = noun.head.head
         for cluster in noun._.coref_clusters:
-            for span in cluster:
-                for token in span:
+            # for span in cluster:
+            #     for token in span:
+            if util.is_cluster_root(noun, cluster):
+                for token in util.get_cluster_roots(cluster):
                     if use_generic or not util.is_generic(token):
                         if self.verbose and util.is_generic(token):
                             print(colored("warning:", "yellow"), 
@@ -196,24 +211,8 @@ class KnowledgeGraph:
                                       ignore_verb_dissimilarity=True)
             if r[0] == KnowledgeGraph.entailment:
                 entailed_without_verb.append((premise, r[1]))
-        if len(entailed_without_verb) > 0 and self.use_bert:
-            hypothesis_sent = util.get_containing_sentence(hypothesis[0])
-            contradiction_bert = None
-            for premise, proof in entailed_without_verb:
-                premise_sent = util.get_containing_sentence(premise[0])
-                logits = bert_nli_classification(premise_sent,
-                                                 hypothesis_sent)
-                if logits.argmax() == 1: # entailment
-                    return KnowledgeGraph.entailment_bert, \
-                            [(premise, r[1], logits)]
-                if logits.argmax() == 0: # contradiction
-                    contradiction_bert = [(premise, r[1], logits)]
-            if contradiction_bert is not None:
-                return KnowledgeGraph.contradiction_bert, contradiction_bert
         if len(contradiction_deps) > 0:
             return KnowledgeGraph.contradiction, contradiction_deps
-        if len(entailed_without_verb) > 0:
-            return KnowledgeGraph.missing_verb, entailed_without_verb
         if len(missing_actors) > 0 and len(missing_acteds) > 0:
             return KnowledgeGraph.invalid_simplification, \
                     missing_actors + missing_acteds
@@ -221,6 +220,23 @@ class KnowledgeGraph:
             return KnowledgeGraph.missing_actors, missing_actors
         if len(missing_acteds) > 0:
             return KnowledgeGraph.missing_acteds, missing_acteds
+        if len(entailed_without_verb) > 0 and self.use_bert:
+            print(entailed_without_verb)
+            hypothesis_sent = util.get_containing_phrase(hypothesis)
+            contradiction_bert = list()
+            for premise, proof in entailed_without_verb:
+                premise_sent = util.get_containing_phrase(premise)
+                logits = bert_nli_classification(premise_sent,
+                                                 hypothesis_sent)
+                if logits.argmax() == 1: # entailment
+                    return KnowledgeGraph.entailment_bert, \
+                            [(premise, proof, logits)]
+                if logits.argmax() == 0: # contradiction
+                    contradiction_bert.append((premise, proof, logits))
+            if len(contradiction_bert) is not 0:
+                return KnowledgeGraph.contradiction_bert, contradiction_bert
+        if len(entailed_without_verb) > 0:
+            return KnowledgeGraph.missing_verb, entailed_without_verb
         # uncomment this to instead return the closest verb in the event that
         # no actual verb to which we can compare is found.
         # if len(missing_deps) > 0:

@@ -14,9 +14,10 @@ class Annotator:
     invalid_simplification = 2 << KnowledgeGraph.invalid_simplification
     contradiction_bert = 2 << KnowledgeGraph.contradiction_bert
 
-    def __init__(self, document, summary):
+    def __init__(self, document, summary, latex=False):
         self.document = document
         self.summary = summary
+        self.latex = latex
         self.document_annotations, self.summary_annotations = \
                 util.copy_annotations(self.document, self.summary)
         for i in range(len(self.document_annotations)):
@@ -61,11 +62,11 @@ class Annotator:
         if annotation & Annotator.invalid_simplification:
             return 'magenta'
         if annotation & Annotator.missing_actors:
-            return 'yellow'
+            return 'magenta'
         if annotation & Annotator.missing_acteds:
-            return 'yellow'
+            return 'magenta'
         if annotation & Annotator.missing_verb:
-            return 'yellow'
+            return 'magenta'
         if annotation & Annotator.missing_dependencies:
             return 'yellow'
         if annotation & Annotator.entailment:
@@ -79,15 +80,18 @@ class Annotator:
             return 'on_grey'
         return None
 
+    def get_formatted(self, word, annotation):
+        color = self.get_color(annotation)
+        hl = self.get_highlight(annotation)
+        return util.format(word, color, hl, self.latex)
+
     def annotated(self):
         annotated_document = list()
         for word, annotation in zip(self.document, self.document_annotations):
             word = word.text
-            annotated_document.append(colored(word, self.get_color(annotation),
-                self.get_highlight(annotation)))
+            annotated_document.append(self.get_formatted(word, annotation))
         annotated_summary = list()
         for word, annotation in zip(self.summary, self.summary_annotations):
             word = word.text
-            annotated_summary.append(colored(word, self.get_color(annotation),
-                self.get_highlight(annotation)))
+            annotated_summary.append(self.get_formatted(word, annotation))
         return annotated_document, annotated_summary

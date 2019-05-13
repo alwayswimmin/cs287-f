@@ -5,14 +5,14 @@ import neuralcoref
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from termcolor import colored
-from knowledge_graph import KnowledgeGraph
+from knowledge_graph import KnowledgeGraph, CompoundEquivalency
 from annotator import Annotator
 from speaker_pronoun_equivalency import SpeakerPronounEquivalency
 import util
 from rouge import Rouge
 
-def test(nlp, src, gen, bert=False, print_annotations=False, verbose=False):
+def test(nlp, src, gen, bert=False, print_annotations=False, print_latex=False,
+         verbose=False):
     if print_annotations:
         print("source:", src_line[:50])
         print("summary:", gen_line[:50])
@@ -20,13 +20,14 @@ def test(nlp, src, gen, bert=False, print_annotations=False, verbose=False):
     gen = nlp(gen)
     if verbose:
         print("clusters:", src._.coref_clusters, gen._.coref_clusters)
+    ce = CompoundEquivalency()
     spe = SpeakerPronounEquivalency()
     spe.register(src)
     spe.register(gen)
-    kg = KnowledgeGraph(nlp, use_bert=bert, equivalencies=[spe],
+    kg = KnowledgeGraph(nlp, use_bert=bert, equivalencies=[ce, spe],
                         verbose=verbose)
     if print_annotations:
-        annotator = Annotator(src, gen)
+        annotator = Annotator(src, gen, latex=print_latex)
     kg.add_document(src)
     contained = 0
     contained_bert = 0
@@ -45,49 +46,49 @@ def test(nlp, src, gen, bert=False, print_annotations=False, verbose=False):
             r = kg.query_relation(relation)
             if r[0] == KnowledgeGraph.entailment:
                 if print_annotations:
-                    print(colored("contained", "blue"), "|", 
-                            relation, "|", r[1])
+                    print(util.format("contained", "blue", latex=print_latex),
+                            "|", relation, "|", r[1])
                 contained += 1
             if r[0] == KnowledgeGraph.entailment_bert:
                 if print_annotations:
-                    print(colored("contained (BERT)", "blue"), "|", 
-                            relation, "|", r[1])
+                    print(util.format("contained (BERT)", "blue",
+                            latex=print_latex), "|", relation, "|", r[1])
                 contained_bert += 1
             if r[0] == KnowledgeGraph.contradiction_bert:
                 if print_annotations:
-                    print(colored("contradiction (BERT)", "red"), "|", 
-                            relation, "|", r[1])
+                    print(util.format("contradiction (BERT)", "red",
+                            latex=print_latex), "|", relation, "|", r[1])
                 contradiction_bert += 1
             elif r[0] == KnowledgeGraph.missing_dependencies:
                 missing += 1
                 if print_annotations:
-                    print(colored("generic missing dependency", "yellow"), "|",
-                            relation, "|", r[1])
+                    print(util.format("generic missing dependency", "yellow",
+                            latex=print_latex), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.missing_actors:
                 missing_actors += 1
                 if print_annotations:
-                    print(colored("missing actors", "yellow"), "|", relation,
-                            "|", r[1])
+                    print(util.format("missing actors", "magenta",
+                            latex=print_latex), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.missing_acteds:
                 missing_acteds += 1
                 if print_annotations:
-                    print(colored("missing acteds", "yellow"), "|", relation,
-                            "|", r[1])
+                    print(util.format("missing acteds", "magenta",
+                            latex=print_latex), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.missing_verb:
                 missing_verb += 1
                 if print_annotations:
-                    print(colored("missing verb", "yellow"), "|", relation,
-                            "|", r[1])
+                    print(util.format("missing verb", "magenta",
+                            latex=print_latex), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.invalid_simplification:
                 invalid_simplification += 1
                 if print_annotations:
-                    print(colored("invalid simplification", "magenta"), "|",
-                            relation, "|", r[1])
+                    print(util.format("invalid simplification", "magenta",
+                            latex=print_latex), "|", relation, "|", r[1])
             elif r[0] == KnowledgeGraph.contradiction:
                 contradiction += 1
                 if print_annotations:
-                    print(colored("contradiction", "red"), "|", relation, "|",
-                            r[1])
+                    print(util.format("contradiction", "red",
+                            latex=print_latex), "|", relation, "|", r[1])
             if print_annotations:
                 annotator.annotate(relation, r)
     if print_annotations:
@@ -129,6 +130,9 @@ if __name__ == "__main__":
     parser.add_argument('--print-annotations', dest='print_annotations',
                         action='store_const', const=True, default=False,
                         help='document annotation prints (default: False)')
+    parser.add_argument('--print-latex', dest='print_latex',
+                        action='store_const', const=True, default=False,
+                        help='prints in LaTeX mode (default: False)')
     parser.add_argument('--draw-histogram', dest='draw', action='store_const',
                         const=True, default=False,
                         help='draw histogram (default: False)')
@@ -159,6 +163,7 @@ if __name__ == "__main__":
     indices = args.indices
     print_scores = args.print_scores
     print_annotations = args.print_annotations
+    print_latex = args.print_latex
     verbose = args.verbose
     copy = args.copy
     no_test = args.no_test
@@ -203,7 +208,7 @@ if __name__ == "__main__":
                     if not no_test:
                         score = test(nlp, src_line, gen_line, bert=bert,
                                      print_annotations=print_annotations,
-                                     verbose=verbose)
+                                     print_latex=print_latex, verbose=verbose)
                         contained, contained_bert, missing, missing_verb, \
                                 missing_actors, missing_acteds, \
                                 contradiction, contradiction_bert, \
