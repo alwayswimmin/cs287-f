@@ -1,10 +1,11 @@
 # cs287-f
+Investigating Factual Accuracy in Abstractive Summarization Models
 
 ## Setup
 ```
 pip3 install -r requirements.txt
-python -m spacy download en_core_web_sm
-python -m spacy download en_core_web_lg
+python3 -m spacy download en_core_web_sm
+python3 -m spacy download en_core_web_lg
 ```
 
 ## Preprocessing model outputs
